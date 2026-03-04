@@ -73,7 +73,7 @@ body{
 @keyframes viewIn{to{opacity:1;transform:none}}
 
 .v.on>.cd,.v.on>.amt,.v.on>.dh,.v.on>.sub-inline,.v.on>.ch,.v.on>.ct,.v.on>.cgr,.v.on>.day-peek,.v.on>.stat-card,.v.on>.stat-list{
-  opacity:0;animation:stIn .45s cubic-bezier(.16,1,.3,1) forwards;
+  animation:stIn .45s cubic-bezier(.16,1,.3,1) forwards;
 }
 .v.on>*:nth-child(1){animation-delay:.03s}
 .v.on>*:nth-child(2){animation-delay:.07s}
@@ -84,7 +84,7 @@ body{
 .v.on>*:nth-child(7){animation-delay:.27s}
 .v.on>*:nth-child(8){animation-delay:.31s}
 .v.on>*:nth-child(9){animation-delay:.35s}
-@keyframes stIn{to{opacity:1;transform:none}}
+@keyframes stIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* ─── TOOLBAR ─── */
 .toolbar{
@@ -696,7 +696,16 @@ function showApp(){
   // Set default payer
   const payerBtns=document.querySelectorAll('.pb');
   payerBtns.forEach(b=>{if(b.dataset.p===ROLE){b.classList.add('on');st.pay=ROLE}});
-  document.getElementById('vExp').classList.add('on');
+  // Render static UI FIRST (before .on triggers stagger animations)
+  rCats();
+  rSources();
+  upD();
+  val();
+  // Now trigger entrance animation when children exist
+  requestAnimationFrame(()=>{
+    document.getElementById('vExp').classList.add('on');
+  });
+  // Load remote data in background (non-blocking)
   initApp();
 }
 
@@ -1222,15 +1231,12 @@ function drawPie(data){
    INIT APP
    ═══════════════════════════════════════ */
 async function initApp(){
-  await loadMeta();
-  rCats();
-  rSources();
-  await loadRates();
-  await loadExpenses();
-  upD();
-  val();
+  // Each load is independent — one failing won't block others
+  loadMeta().then(()=>{rCats();rSources()}).catch(e=>console.warn('meta',e));
+  loadRates().catch(e=>console.warn('rates',e));
+  loadExpenses().catch(e=>console.warn('expenses',e));
   // refresh rates every 5 min
-  setInterval(loadRates,5*60*1000);
+  setInterval(()=>loadRates().catch(()=>{}),5*60*1000);
 }
 </script>
 </body>
