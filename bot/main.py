@@ -21,6 +21,11 @@ WEBAPP_URL = os.environ["WEBAPP_URL"]
 PORT = int(os.environ.get("PORT", 8080))
 AUTH_KEY_VOVA = os.environ.get("AUTH_KEY_VOVA", "")
 AUTH_KEY_KARINA = os.environ.get("AUTH_KEY_KARINA", "")
+APP_VERSION = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("APP_VERSION") or "dev")[:8]
+
+def with_cache_bust(url: str) -> str:
+    sep = "&" if "?" in url else "?"
+    return f"{url}{sep}v={APP_VERSION}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log = logging.getLogger("expense-bot")
@@ -291,7 +296,7 @@ async def cmd_start(message: types.Message):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
             text="+ Добавить расход",
-            web_app=WebAppInfo(url=WEBAPP_URL)
+            web_app=WebAppInfo(url=with_cache_bust(WEBAPP_URL))
         )]
     ])
     await message.answer(
@@ -306,7 +311,7 @@ async def cmd_start(message: types.Message):
         await bot.set_chat_menu_button(
             chat_id=message.chat.id,
             menu_button=MenuButtonWebApp(
-                text="Расход", web_app=WebAppInfo(url=WEBAPP_URL)
+                text="Расход", web_app=WebAppInfo(url=with_cache_bust(WEBAPP_URL))
             )
         )
     except Exception as e:
@@ -317,7 +322,7 @@ async def cmd_add(message: types.Message):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(
             text="+ Добавить расход",
-            web_app=WebAppInfo(url=WEBAPP_URL)
+            web_app=WebAppInfo(url=with_cache_bust(WEBAPP_URL))
         )]
     ])
     await message.answer("Заполни форму:", reply_markup=kb)
