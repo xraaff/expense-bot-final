@@ -1,0 +1,32 @@
+# Render Blueprint — expense tracker bot
+# Импортируй репозиторий в Render → New → Blueprint, Render прочитает этот файл.
+# Данные лежат в Google Sheets (внешняя таблица), хостинг их не хранит.
+services:
+  - type: web
+    name: expense-bot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      # ── секреты: значения вводишь вручную в дашборде Render (sync:false) ──
+      - key: BOT_TOKEN
+        sync: false
+      - key: SPREADSHEET_ID
+        sync: false
+      # Публичный URL сервиса Render — вписать ПОСЛЕ первого деплоя
+      # (например https://expense-bot-xxxx.onrender.com), затем redeploy.
+      - key: WEBAPP_URL
+        sync: false
+      # Креды сервис-аккаунта Google одной base64-строкой (приоритетный вариант)
+      - key: GOOGLE_CREDS_JSON_BASE64
+        sync: false
+      - key: AUTH_KEY_VOVA
+        sync: false
+      - key: AUTH_KEY_KARINA
+        sync: false
+      # ── не секреты ──
+      - key: KEEPALIVE_INTERVAL
+        value: "600"
+      - key: APP_VERSION
+        value: "render"

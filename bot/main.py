@@ -21,7 +21,11 @@ WEBAPP_URL = os.environ["WEBAPP_URL"]
 PORT = int(os.environ.get("PORT", 8080))
 AUTH_KEY_VOVA = os.environ.get("AUTH_KEY_VOVA", "")
 AUTH_KEY_KARINA = os.environ.get("AUTH_KEY_KARINA", "")
-APP_VERSION = (os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("APP_VERSION") or "dev")[:8]
+APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("APP_VERSION") or "dev")[:8]
+
+# Keep-alive: Render free tier усыпляет сервис после 15 мин без входящих запросов.
+# Мы сами пингуем свой /health, чтобы бот (polling) не умирал. 0 = выключить.
+KEEPALIVE_INTERVAL = int(os.environ.get("KEEPALIVE_INTERVAL", "600"))  # секунды, дефолт 10 мин
 
 def with_cache_bust(url: str) -> str:
     sep = "&" if "?" in url else "?"
@@ -588,6 +592,23 @@ app.router.add_get("/api/meta", api_meta_get)
 app.router.add_post("/api/meta", api_meta_update)
 app.router.add_get("/{filename}", serve_static)
 
+# ─── KEEP-ALIVE ───
+async def keepalive_loop():
+    """Пингуем собственный /health, чтобы Render free tier не усыплял сервис.
+    Запрос уходит наружу на публичный URL и возвращается как входящий трафик —
+    Render считает сервис активным и не убивает polling бота."""
+    import asyncio
+    ping_url = WEBAPP_URL.rstrip("/") + "/health"
+    await asyncio.sleep(30)  # даём веб-серверу подняться
+    while True:
+        try:
+            async with aiohttp.ClientSession() as s:
+                async with s.get(ping_url, timeout=aiohttp.ClientTimeout(total=20)) as r:
+                    log.info("keepalive ping %s -> %s", ping_url, r.status)
+        except Exception as e:
+            log.warning("keepalive ping failed: %s", e)
+        await asyncio.sleep(KEEPALIVE_INTERVAL)
+
 # ─── STARTUP ───
 async def on_startup(_):
     import asyncio
@@ -597,6 +618,9 @@ async def on_startup(_):
     except Exception:
         log.error("Sheets init FAILED:\n%s", traceback.format_exc())
     asyncio.create_task(dp.start_polling(bot))
+    if KEEPALIVE_INTERVAL > 0:
+        asyncio.create_task(keepalive_loop())
+        log.info("Keep-alive enabled: every %ds", KEEPALIVE_INTERVAL)
 
 app.on_startup.append(on_startup)
 
