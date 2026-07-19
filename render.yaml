@@ -14,10 +14,8 @@ services:
         sync: false
       - key: SPREADSHEET_ID
         sync: false
-      # Публичный URL сервиса Render — вписать ПОСЛЕ первого деплоя
-      # (например https://expense-bot-xxxx.onrender.com), затем redeploy.
-      - key: WEBAPP_URL
-        sync: false
+      # WEBAPP_URL задавать НЕ нужно: код берёт публичный адрес из
+      # RENDER_EXTERNAL_URL, который Render проставляет автоматически.
       # Креды сервис-аккаунта Google одной base64-строкой (приоритетный вариант)
       - key: GOOGLE_CREDS_JSON_BASE64
         sync: false

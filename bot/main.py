@@ -17,7 +17,8 @@ from google.oauth2.service_account import Credentials
 # ─── ENV ───
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
-WEBAPP_URL = os.environ["WEBAPP_URL"]
+# WEBAPP_URL: на Render можно не задавать — берём автоматически из RENDER_EXTERNAL_URL
+WEBAPP_URL = (os.environ.get("WEBAPP_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "").rstrip("/")
 PORT = int(os.environ.get("PORT", 8080))
 AUTH_KEY_VOVA = os.environ.get("AUTH_KEY_VOVA", "")
 AUTH_KEY_KARINA = os.environ.get("AUTH_KEY_KARINA", "")
