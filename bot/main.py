@@ -50,6 +50,8 @@ _ws_cache = {}
 def _get_creds_dict():
     b64 = os.environ.get("GOOGLE_CREDS_JSON_BASE64", "")
     if b64:
+        b64 = "".join(b64.split())          # убрать пробелы/переносы строк
+        b64 += "=" * (-len(b64) % 4)         # добить недостающий padding
         raw = base64.b64decode(b64)
         return json.loads(raw)
     raw = os.environ.get("GOOGLE_CREDS_JSON", "")
