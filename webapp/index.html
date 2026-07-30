@@ -719,6 +719,10 @@ body{
 <div class="toast" id="toast"></div>
 
 <script>
+window.addEventListener('error',function(e){try{var d=document.getElementById('__je')||document.createElement('div');d.id='__je';d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:999999;background:#c0392b;color:#fff;font:11px/1.4 monospace;padding:10px;white-space:pre-wrap;max-height:50vh;overflow:auto';d.textContent='JS ERROR: '+e.message+'\n@ '+((e.filename||'').split('/').pop())+':'+e.lineno+':'+e.colno;(document.body||document.documentElement).appendChild(d);}catch(_){}});
+window.addEventListener('unhandledrejection',function(e){try{var d=document.createElement('div');d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:999998;background:#8e44ad;color:#fff;font:11px monospace;padding:10px;white-space:pre-wrap';d.textContent='PROMISE: '+(e.reason&&e.reason.message||e.reason);(document.body||document.documentElement).appendChild(d);}catch(_){}});
+</script>
+<script>
 /* ═══════════════════════════════════════
    INIT
    ═══════════════════════════════════════ */

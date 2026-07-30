@@ -30,7 +30,7 @@ KEEPALIVE_INTERVAL = int(os.environ.get("KEEPALIVE_INTERVAL", "600"))  # сек�
 
 def with_cache_bust(url: str) -> str:
     sep = "&" if "?" in url else "?"
-    return f"{url}{sep}v={APP_VERSION}"
+    return f"{url}{sep}v={APP_VERSION}-{int(time.time())}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 log = logging.getLogger("expense-bot")
