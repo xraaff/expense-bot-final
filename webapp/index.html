@@ -116,8 +116,8 @@ body{
 
 /* ─── VIEWS ─── */
 .v{display:none;padding:10px 16px 100px;opacity:0;transform:translate3d(0,8px,0)}
-.v.on{display:block;animation:viewIn .45s var(--ease-out-expo) forwards}
-@keyframes viewIn{to{opacity:1;transform:none}}
+.v.on{display:block;opacity:1;transform:none;animation:viewIn .45s var(--ease-out-expo) forwards}
+@keyframes viewIn{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
 
 .v.on>.cd,.v.on>.amt,.v.on>.dh,.v.on>.sub-inline,.v.on>.ch,.v.on>.ct,.v.on>.cgr,.v.on>.day-peek,.v.on>.stat-card,.v.on>.stat-list{
   animation:stIn .5s var(--ease-out-expo) forwards;
