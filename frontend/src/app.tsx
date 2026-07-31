@@ -9,7 +9,7 @@ import { AddExpenseSheet } from './sheets/AddExpenseSheet';
 import { Skeleton } from './components/Skeleton';
 import { Toast } from './components/Toast';
 import { useExpenses } from './lib/useExpenses';
-import { authenticate, fetchMeta, fetchRates } from './lib/api';
+import { authenticate, fetchMeta, fetchRates, updateMeta } from './lib/api';
 import { initTheme } from './lib/theme';
 import { monthKey } from './lib/aggregate';
 import type { Currency, Expense, Rates } from './lib/types';
@@ -46,6 +46,7 @@ export default function App() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | undefined>(undefined);
   const [dismissed, setDismissed] = useState(false);
+  const [customCats, setCustomCats] = useState<string[]>([]);
 
   const range = useMemo(() => rangeLastMonths(3), []);
   const { items, loading, error, add, update, remove, reload } = useExpenses(range);
@@ -58,11 +59,31 @@ export default function App() {
     void fetchRates('UAH').then(setRates);
     void fetchMeta().then((m) => {
       if (m.categories.length) {
-        setCategories([...DEFAULT_CATEGORIES, ...m.categories.map((c) => c.n)]);
+        const custom = m.categories.map((c) => c.n);
+        setCustomCats(custom);
+        setCategories([...DEFAULT_CATEGORIES, ...custom]);
       }
       if (m.sources.length) setSources([...DEFAULT_SOURCES, ...m.sources]);
     });
   }, [role]);
+
+  async function editCategory(name: string, rename: boolean): Promise<void> {
+    const next = rename ? window.prompt('Новое имя категории', name)?.trim() : null;
+    if (rename && !next) return;
+    const optimistic = rename
+      ? customCats.map((c) => (c === name ? next! : c))
+      : customCats.filter((c) => c !== name);
+    setCustomCats(optimistic);
+    setCategories([...DEFAULT_CATEGORIES, ...optimistic]);
+    try {
+      await updateMeta(rename
+        ? { action: 'rename', target: 'categories', old_name: name, new_name: next! }
+        : { action: 'delete', target: 'categories', name });
+    } catch {
+      setCustomCats(customCats);
+      setCategories([...DEFAULT_CATEGORIES, ...customCats]);
+    }
+  }
 
   async function doAuth(): Promise<void> {
     const tg = telegram();
@@ -162,6 +183,9 @@ export default function App() {
           else await add(input);
         }}
         onDelete={editing ? (id) => remove(id) : undefined}
+        customCategories={customCats}
+        onRenameCategory={(n) => { void editCategory(n, true); }}
+        onDeleteCategory={(n) => { void editCategory(n, false); }}
       />
     </div>
   );

@@ -58,3 +58,15 @@ export async function authenticate(
   });
   return j.ok ? (j.role ?? null) : null;
 }
+
+export type MetaTarget = 'categories' | 'sources';
+
+export type MetaUpdate =
+  | { action: 'add'; target: MetaTarget; item: unknown }
+  | { action: 'rename'; target: MetaTarget; old_name: string; new_name: string; new_icon?: string }
+  | { action: 'delete'; target: MetaTarget; name: string };
+
+export async function updateMeta(payload: MetaUpdate): Promise<void> {
+  const j = await postJson<{ ok: boolean; error?: string }>('/api/meta', payload);
+  if (!j.ok) throw new Error(j.error ?? 'Не удалось сохранить справочник');
+}

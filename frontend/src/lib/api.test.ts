@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { fetchStats, saveExpense, fetchRates, authenticate } from './api';
+import { updateMeta, fetchStats, saveExpense, fetchRates, authenticate } from './api';
 
 const mockFetch = (body: unknown, ok = true) =>
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -63,5 +63,23 @@ describe('authenticate', () => {
   it('возвращает null при неверном ключе', async () => {
     mockFetch({ ok: false });
     expect(await authenticate('bad', '1', '2')).toBeNull();
+  });
+});
+
+describe('updateMeta', () => {
+  it('шлёт действие, цель и имя', async () => {
+    mockFetch({ ok: true });
+    await updateMeta({ action: 'delete', target: 'categories', name: 'Крипта' });
+    const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
+    const body = JSON.parse(init.body as string);
+    expect(body.action).toBe('delete');
+    expect(body.target).toBe('categories');
+    expect(body.name).toBe('Крипта');
+  });
+
+  it('бросает ошибку при ok:false', async () => {
+    mockFetch({ ok: false, error: 'bad target' });
+    await expect(updateMeta({ action: 'delete', target: 'categories', name: 'X' }))
+      .rejects.toThrow('bad target');
   });
 });

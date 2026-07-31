@@ -7,6 +7,7 @@ import {
 } from 'react-aria-components';
 import { CalendarDate, getLocalTimeZone, today as todayIn } from '@internationalized/date';
 import { CategoryTile } from '../components/CategoryTile';
+import { CategoryMenu } from '../components/CategoryMenu';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
 
@@ -22,6 +23,9 @@ interface Props {
   initial?: Expense;
   onSubmit: (input: ExpenseInput) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  customCategories?: string[];
+  onRenameCategory?: (name: string) => void;
+  onDeleteCategory?: (name: string) => void;
 }
 
 function parseISO(iso: string): CalendarDate {
@@ -151,6 +155,21 @@ export function AddExpenseSheet(props: Props) {
                                 onSelect={() => setCategory(c)} />
                 ))}
               </div>
+              {props.customCategories && props.customCategories.length > 0 &&
+               props.onRenameCategory && props.onDeleteCategory && (
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <span className="text-[10px]" style={{ color: 'var(--tx3)' }}>Свои:</span>
+                  {props.customCategories.map((c) => (
+                    <span key={c} className="flex items-center gap-0.5 text-xs"
+                          style={{ color: 'var(--tx2)' }}>
+                      {c}
+                      <CategoryMenu name={c}
+                                    onRename={props.onRenameCategory!}
+                                    onDelete={props.onDeleteCategory!} />
+                    </span>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="space-y-2">
