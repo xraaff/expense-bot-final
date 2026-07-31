@@ -18,7 +18,7 @@ export function convert(amount: number, from: Currency, to: Currency, rates: Rat
   if (from === to) return amount;
   const rateFrom = from === 'UAH' ? 1 : rates[from];
   const rateTo = to === 'UAH' ? 1 : rates[to];
-  if (!rateFrom || !rateTo) return amount;
+  if (!rateFrom || !rateTo || rateFrom <= 0 || rateTo <= 0) return amount;
   const inBase = amount / rateFrom;
   return inBase * rateTo;
 }
