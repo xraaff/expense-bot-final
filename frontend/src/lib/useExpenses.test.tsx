@@ -62,4 +62,25 @@ describe('useExpenses', () => {
     expect(result.current.items).toHaveLength(1);
     expect(result.current.error).toBe('нет доступа');
   });
+
+  it('изменяет операцию оптимистично и откатывает ровно к прежнему значению при ошибке', async () => {
+    vi.spyOn(api, 'saveExpense').mockRejectedValue(new Error('нет доступа'));
+    const { result } = renderHook(() => useExpenses(RANGE));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const changed: Expense = { ...existing, amount: 999, category: 'Продукты' };
+
+    let updatePromise: Promise<void> = Promise.resolve();
+    act(() => {
+      updatePromise = result.current.update(changed);
+    });
+    // Оптимистично: новое значение видно сразу, до ответа сервера.
+    expect(result.current.items[0]).toEqual(changed);
+
+    await act(async () => { await updatePromise; });
+
+    // Откат должен вернуть ровно прежний объект, а не просто прежнюю длину массива.
+    expect(result.current.items[0]).toEqual(existing);
+    expect(result.current.error).toBe('нет доступа');
+  });
 });
