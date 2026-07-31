@@ -415,6 +415,11 @@ WEBAPP_DIR = Path(__file__).parent.parent / "webapp"
 V2_DIR = WEBAPP_DIR / "v2"
 
 async def serve_webapp(request):
+    # Новый интерфейс (Homebase). Если сборка не попала в образ — отдаём старый,
+    # чтобы приложение не пропало совсем.
+    v2 = WEBAPP_DIR / "v2" / "index.html"
+    if v2.exists():
+        return web.FileResponse(v2)
     return web.FileResponse(WEBAPP_DIR / "index.html")
 
 async def serve_static(request):
