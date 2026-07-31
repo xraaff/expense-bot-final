@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { monthKey, totalFor, filterMonth, byCategory, byPayer, byDay } from './aggregate';
+import { bySource, monthKey, totalFor, filterMonth, byCategory, byPayer, byDay } from './aggregate';
 import type { Expense } from './types';
 
 const RATES = { USD: 0.024, PLN: 0.096 };
@@ -59,5 +59,18 @@ describe('byDay', () => {
     const r = byDay(filterMonth(ITEMS, '2026-03'), 'UAH', RATES);
     expect(r['2026-03-03']).toBeCloseTo(500, 5);
     expect(r['2026-03-05']).toBeCloseTo(1000, 5);
+  });
+});
+
+describe('bySource', () => {
+  it('группирует по источнику и сортирует по убыванию', () => {
+    const items = [
+      mk({ id: 'a', amount: 100, source: 'Общий' }),
+      mk({ id: 'b', amount: 400, source: 'Наличные' }),
+      mk({ id: 'c', amount: 50, source: 'Общий' }),
+    ];
+    const r = bySource(items, 'UAH', RATES);
+    expect(r[0]).toEqual({ source: 'Наличные', total: 400 });
+    expect(r[1]).toEqual({ source: 'Общий', total: 150 });
   });
 });

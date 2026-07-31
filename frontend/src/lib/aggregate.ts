@@ -45,3 +45,14 @@ export function byPayer(items: Expense[], to: Currency, rates: Rates): Record<st
 export function byDay(items: Expense[], to: Currency, rates: Rates): Record<string, number> {
   return groupSum(items, to, rates, (e) => e.date);
 }
+
+export function bySource(
+  items: Expense[],
+  to: Currency,
+  rates: Rates
+): { source: string; total: number }[] {
+  const grouped = groupSum(items, to, rates, (e) => e.source);
+  return Object.entries(grouped)
+    .map(([source, total]) => ({ source, total }))
+    .sort((a, b) => b.total - a.total);
+}
