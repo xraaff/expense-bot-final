@@ -1,2 +1,47 @@
 @import "tailwindcss";
 @plugin "tailwindcss-react-aria-components";
+
+@theme {
+  --color-ac: #FF9500;
+  --color-pos: #68CE66;
+  --color-neg: #FF5A5F;
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+:root {
+  --bg: #f5f5f7;
+  --s1: #ffffff;
+  --s2: #ededf0;
+  --tx: #111114;
+  --tx2: #5a5a6b;
+  --tx3: #7b7b8c;
+  --bd: rgb(0 0 0 / 0.10);
+  --grad: linear-gradient(135deg,#AA00FF 0%,#FF9500 40%,#FFE620 70%,#68CE66 100%);
+}
+
+:root[data-theme="dark"] {
+  --bg: #08080a;
+  --s1: #111114;
+  --s2: #19191f;
+  --tx: #f4f4f8;
+  --tx2: #a5a5b8;
+  --tx3: #8a8a9a;
+  --bd: rgb(255 255 255 / 0.08);
+}
+
+html, body { background: var(--bg); color: var(--tx); }
+
+body {
+  font-family: Poppins, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tnum { font-variant-numeric: tabular-nums; }
+
+.gradient-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
