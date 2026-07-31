@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { contrastRatio } from './contrast';
 
-const DARK = { bg: '#08080a', tx: '#f4f4f8', tx2: '#a5a5b8' };
-const LIGHT = { bg: '#f5f5f7', tx: '#111114', tx2: '#5a5a6b' };
+const DARK = { bg: '#14122E', tx: '#F4F4FA', tx2: '#ADAACB' };
+const LIGHT = { bg: '#F7F8FB', tx: '#1A1740', tx2: '#55536F' };
 
 describe('contrastRatio', () => {
   it('вычисляет известные эталоны', () => {

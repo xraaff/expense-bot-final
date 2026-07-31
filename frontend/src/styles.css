@@ -2,39 +2,46 @@
 @plugin "tailwindcss-react-aria-components";
 
 @theme {
-  --color-ac: #FF9500;
-  --color-pos: #68CE66;
-  --color-neg: #FF5A5F;
+  --color-ac: #2ECC8F;
+  --color-ink: #211C4E;
+  --color-pos: #2ECC8F;
+  --color-neg: #E5484D;
   --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-exit: cubic-bezier(0.55, 0, 1, 0.45);
 }
 
+/* Светлая тема — основная, под фирменный знак: тёмно-синий + зелёный на белом */
 :root {
-  --bg: #f5f5f7;
-  --s1: #ffffff;
-  --s2: #ededf0;
-  --tx: #111114;
-  --tx2: #5a5a6b;
-  --tx3: #7b7b8c;
-  --bd: rgb(0 0 0 / 0.10);
-  --grad: linear-gradient(135deg,#AA00FF 0%,#FF9500 40%,#FFE620 70%,#68CE66 100%);
+  --bg: #F7F8FB;
+  --s1: #FFFFFF;
+  --s2: #EEF0F6;
+  --s3: #E3E6F0;
+  --tx: #1A1740;
+  --tx2: #55536F;
+  --tx3: #8886A3;
+  --bd: rgb(33 28 78 / 0.10);
+  --ink: #211C4E;
+  --grad: linear-gradient(135deg, #211C4E 0%, #2E2A63 55%, #2ECC8F 100%);
 }
 
 :root[data-theme="dark"] {
-  --bg: #08080a;
-  --s1: #111114;
-  --s2: #19191f;
-  --tx: #f4f4f8;
-  --tx2: #a5a5b8;
-  --tx3: #8a8a9a;
-  --bd: rgb(255 255 255 / 0.08);
+  --bg: #14122E;
+  --s1: #1C1943;
+  --s2: #262254;
+  --s3: #322D68;
+  --tx: #F4F4FA;
+  --tx2: #ADAACB;
+  --tx3: #837FA6;
+  --bd: rgb(255 255 255 / 0.10);
+  --ink: #FFFFFF;
 }
 
 html, body { background: var(--bg); color: var(--tx); }
 
 body {
-  font-family: Poppins, system-ui, sans-serif;
+  font-family: Manrope, Poppins, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
 }
 
 .tnum { font-variant-numeric: tabular-nums; }
@@ -44,4 +51,13 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Заголовок-сумма: чернильный синий из знака, без градиента — читается строже */
+.hero-num { color: var(--ink); letter-spacing: -0.03em; }
+
+.surface { background: var(--s1); border: 1px solid var(--bd); border-radius: 20px; }
+.label-cap {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--tx3);
 }

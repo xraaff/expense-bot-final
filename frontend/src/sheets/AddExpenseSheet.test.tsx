@@ -57,10 +57,23 @@ describe('AddExpenseSheet', () => {
     expect(onSubmit.mock.calls[0][0].date).toBe(today);
   });
 
-  it('показывает редактируемые сегменты даты', () => {
+  it('даёт быстрый выбор даты чипами', () => {
     render(<AddExpenseSheet {...base} onSubmit={vi.fn()} />);
     expect(screen.getByText('Дата')).toBeInTheDocument();
-    // DateSegment отрисовывает день, месяц и год как spinbutton — значит поле реально редактируемое
-    expect(screen.getAllByRole('spinbutton').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByRole('button', { name: 'Сегодня' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Вчера' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Выбрать дату в календаре' })).toBeInTheDocument();
+  });
+
+  it('чип Вчера подставляет вчерашнюю дату', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<AddExpenseSheet {...base} onSubmit={onSubmit} />);
+    await user.type(screen.getByRole('textbox', { name: 'Сумма' }), '100');
+    await user.click(screen.getByRole('button', { name: 'Кафе' }));
+    await user.click(screen.getByRole('button', { name: 'Вчера' }));
+    await user.click(screen.getByRole('button', { name: 'Записать' }));
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    expect(onSubmit.mock.calls[0][0].date).toBe(d.toISOString().slice(0, 10));
   });
 });

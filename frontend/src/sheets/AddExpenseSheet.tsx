@@ -2,12 +2,12 @@ import { useState } from 'react';
 import {
   Button, Dialog, Modal, ModalOverlay, TextField, Label, Input, TextArea,
   ToggleButton, ToggleButtonGroup,
-  DatePicker, Group, DateInput, DateSegment, Popover, Calendar,
-  CalendarGrid, CalendarCell, Heading,
+  DialogTrigger, Popover, Calendar, CalendarGrid, CalendarCell, Heading,
 } from 'react-aria-components';
 import { CalendarDate, getLocalTimeZone, today as todayIn } from '@internationalized/date';
 import { CategoryTile } from '../components/CategoryTile';
 import { CategoryMenu } from '../components/CategoryMenu';
+import { Plus, CalendarBlank } from '@phosphor-icons/react';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
 
@@ -24,8 +24,14 @@ interface Props {
   onSubmit: (input: ExpenseInput) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
   customCategories?: string[];
+  onAddCategory?: () => void;
   onRenameCategory?: (name: string) => void;
   onDeleteCategory?: (name: string) => void;
+}
+
+function formatRu(d: CalendarDate): string {
+  return d.toDate(getLocalTimeZone())
+    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 }
 
 function parseISO(iso: string): CalendarDate {
@@ -110,41 +116,58 @@ export function AddExpenseSheet(props: Props) {
               ))}
             </ToggleButtonGroup>
 
-            <DatePicker aria-label="Дата" value={date} onChange={(v) => v && setDate(v)}
-                        className="space-y-2">
-              <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]"
-                     style={{ color: 'var(--tx2)' }}>Дата</Label>
-              <Group aria-label="Дата"
-                     className="flex items-center justify-between rounded-2xl border px-4 py-3"
-                     style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
-                <DateInput className="tnum flex gap-0.5 text-sm">
-                  {(segment) => (
-                    <DateSegment segment={segment}
-                                 className="px-0.5 outline-none focus:text-[var(--color-ac)]" />
-                  )}
-                </DateInput>
-                <Button className="text-sm" style={{ color: 'var(--color-ac)' }}>Выбрать</Button>
-              </Group>
-              <Popover className="rounded-2xl border p-3 shadow-xl"
-                       style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
-                <Dialog>
-                  <Calendar>
-                    <header className="mb-2 flex items-center justify-between">
-                      <Button slot="previous" className="px-2">‹</Button>
-                      <Heading className="text-sm font-medium" />
-                      <Button slot="next" className="px-2">›</Button>
-                    </header>
-                    <CalendarGrid className="text-sm">
-                      {(d) => (
-                        <CalendarCell date={d}
-                          className="flex h-9 w-9 items-center justify-center rounded-lg
-                                     selected:bg-[var(--color-ac)] selected:text-black" />
+            <section className="space-y-2">
+              <p className="label-cap">Дата</p>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { label: 'Сегодня', d: todayIn(getLocalTimeZone()) },
+                  { label: 'Вчера', d: todayIn(getLocalTimeZone()).subtract({ days: 1 }) },
+                  { label: 'Позавчера', d: todayIn(getLocalTimeZone()).subtract({ days: 2 }) },
+                ].map((o) => {
+                  const on = date.compare(o.d) === 0;
+                  return (
+                    <Button key={o.label} onPress={() => setDate(o.d)}
+                      className="rounded-full border px-3.5 py-2 text-sm font-medium transition-colors duration-200"
+                      style={{
+                        borderColor: on ? 'var(--color-ac)' : 'var(--bd)',
+                        background: on ? 'var(--color-ac)' : 'var(--s1)',
+                        color: on ? '#0B3B2A' : 'var(--tx)',
+                      }}>
+                      {o.label}
+                    </Button>
+                  );
+                })}
+                <DialogTrigger>
+                  <Button aria-label="Выбрать дату в календаре"
+                    className="flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium"
+                    style={{ borderColor: 'var(--bd)', background: 'var(--s1)', color: 'var(--tx2)' }}>
+                    <CalendarBlank size={16} weight="duotone" />
+                    {formatRu(date)}
+                  </Button>
+                  <Popover className="rounded-2xl border p-3 shadow-xl"
+                           style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
+                    <Dialog className="outline-none">
+                      {({ close }) => (
+                        <Calendar value={date} onChange={(v) => { setDate(v); close(); }}>
+                          <header className="mb-2 flex items-center justify-between">
+                            <Button slot="previous" className="px-2">‹</Button>
+                            <Heading className="text-sm font-medium" />
+                            <Button slot="next" className="px-2">›</Button>
+                          </header>
+                          <CalendarGrid className="text-sm">
+                            {(d) => (
+                              <CalendarCell date={d}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg
+                                           selected:bg-[var(--color-ac)] selected:text-black" />
+                            )}
+                          </CalendarGrid>
+                        </Calendar>
                       )}
-                    </CalendarGrid>
-                  </Calendar>
-                </Dialog>
-              </Popover>
-            </DatePicker>
+                    </Dialog>
+                  </Popover>
+                </DialogTrigger>
+              </div>
+            </section>
 
             <section className="space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em]"
@@ -154,6 +177,14 @@ export function AddExpenseSheet(props: Props) {
                   <CategoryTile key={c} name={c} selected={category === c}
                                 onSelect={() => setCategory(c)} />
                 ))}
+                {props.onAddCategory && (
+                  <Button aria-label="Новая категория" onPress={props.onAddCategory}
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed px-2 py-3 text-xs font-medium"
+                    style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}>
+                    <Plus size={22} weight="bold" />
+                    Новая
+                  </Button>
+                )}
               </div>
               {props.customCategories && props.customCategories.length > 0 &&
                props.onRenameCategory && props.onDeleteCategory && (

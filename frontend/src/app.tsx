@@ -47,6 +47,7 @@ export default function App() {
   const [editing, setEditing] = useState<Expense | undefined>(undefined);
   const [dismissed, setDismissed] = useState(false);
   const [customCats, setCustomCats] = useState<string[]>([]);
+  const [tab, setTab] = useState('overview');
 
   const range = useMemo(() => rangeLastMonths(3), []);
   const { items, loading, error, add, update, remove, reload } = useExpenses(range);
@@ -66,6 +67,20 @@ export default function App() {
       if (m.sources.length) setSources([...DEFAULT_SOURCES, ...m.sources]);
     });
   }, [role]);
+
+  async function addCategory(): Promise<void> {
+    const name = window.prompt('Название новой категории')?.trim();
+    if (!name || categories.includes(name)) return;
+    const optimistic = [...customCats, name];
+    setCustomCats(optimistic);
+    setCategories([...DEFAULT_CATEGORIES, ...optimistic]);
+    try {
+      await updateMeta({ action: 'add', target: 'categories', item: { n: name, i: '' } });
+    } catch {
+      setCustomCats(customCats);
+      setCategories([...DEFAULT_CATEGORIES, ...customCats]);
+    }
+  }
 
   async function editCategory(name: string, rename: boolean): Promise<void> {
     const next = rename ? window.prompt('Новое имя категории', name)?.trim() : null;
@@ -124,7 +139,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <Tabs defaultSelectedKey="overview">
+      <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(String(k))}>
         <TabPanel id="overview">
           {loading ? <Skeleton className="m-5 h-40" /> : (
             <Overview items={items} currency={currency} rates={rates} month={month}
@@ -144,12 +159,14 @@ export default function App() {
         {/* Кнопка добавления живёт СНАРУЖИ TabList: TabList — коллекция React Aria
             и отрисовывает только Tab, любые другие дети молча теряются. */}
         <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center gap-3 pb-5">
-          <Button aria-label="Добавить трату"
-            onPress={() => { setEditing(undefined); setSheetOpen(true); }}
-            className="flex h-14 w-14 items-center justify-center rounded-full text-black shadow-xl"
-            style={{ background: 'var(--grad)' }}>
-            <Plus size={26} weight="bold" />
-          </Button>
+          {tab === 'overview' && (
+            <Button aria-label="Добавить трату"
+              onPress={() => { setEditing(undefined); setSheetOpen(true); }}
+              className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl"
+              style={{ background: 'var(--ink)' }}>
+              <Plus size={26} weight="bold" />
+            </Button>
+          )}
           <TabList aria-label="Разделы"
             className="flex items-center gap-1 rounded-full border px-2 py-1.5 shadow-lg"
             style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
@@ -184,6 +201,7 @@ export default function App() {
         }}
         onDelete={editing ? (id) => remove(id) : undefined}
         customCategories={customCats}
+        onAddCategory={() => { void addCategory(); }}
         onRenameCategory={(n) => { void editCategory(n, true); }}
         onDeleteCategory={(n) => { void editCategory(n, false); }}
       />
