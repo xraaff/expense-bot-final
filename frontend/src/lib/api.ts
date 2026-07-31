@@ -70,3 +70,18 @@ export async function updateMeta(payload: MetaUpdate): Promise<void> {
   const j = await postJson<{ ok: boolean; error?: string }>('/api/meta', payload);
   if (!j.ok) throw new Error(j.error ?? 'Не удалось сохранить справочник');
 }
+
+export async function fetchSettings(): Promise<{ usd_pln: number } | null> {
+  try {
+    const r = await fetch('/api/settings');
+    const j = (await r.json()) as { ok: boolean; usd_pln?: number };
+    return j.ok && typeof j.usd_pln === 'number' ? { usd_pln: j.usd_pln } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setUsdPln(value: number): Promise<void> {
+  const j = await postJson<{ ok: boolean; error?: string }>('/api/settings', { usd_pln: value });
+  if (!j.ok) throw new Error(j.error ?? 'Не удалось сохранить курс');
+}

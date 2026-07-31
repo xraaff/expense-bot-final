@@ -261,13 +261,28 @@ def meta_get_sources():
 # ─── RATES CACHE ───
 _rates_cache = {"data": None, "ts": 0}
 
-USD_PLN_FIXED = 3.840  # злотых за доллар, задано владельцем
+USD_PLN_DEFAULT = 3.840  # злотых за доллар по умолчанию; правится из интерфейса
+BINANCE_MIN_UAH = "800"  # минимальная сумма сделки — отсекает мусорные объявления
+
+
+def get_usd_pln():
+    """Курс злотого к доллару: значение из META, иначе значение по умолчанию."""
+    try:
+        raw = meta_get("usd_pln_rate")
+        if raw:
+            v = float(str(raw).replace(",", "."))
+            if v > 0:
+                return v
+    except Exception:
+        pass
+    return USD_PLN_DEFAULT
 
 async def _binance_p2p_uah_per_usdt():
     """Средняя цена продажи USDT за гривну по верхним объявлениям Binance P2P."""
     url = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
     payload = {"asset": "USDT", "fiat": "UAH", "tradeType": "SELL",
-               "page": 1, "rows": 10, "payTypes": [], "publisherType": None}
+               "page": 1, "rows": 10, "payTypes": ["PUMBBank"],
+               "transAmount": BINANCE_MIN_UAH, "publisherType": None}
     async with aiohttp.ClientSession() as s:
         async with s.post(url, json=payload,
                           timeout=aiohttp.ClientTimeout(total=12)) as r:
@@ -286,8 +301,34 @@ async def _binance_p2p_uah_per_usdt():
 
 
 async def _pumb_uah_per_pln():
-    """Курс злотого в ПУМБ. Сайт закрыт Cloudflare — при неудаче возвращаем None,
-    и злотый выводится из доллара по фиксированному USD_PLN_FIXED."""
+    """Курс злотого ПУМБ со страницы Минфина. При неудаче — None."""
+    url = "https://minfin.com.ua/ua/company/pumb/currency/"
+    try:
+        async with aiohttp.ClientSession(
+                headers={"User-Agent": "Mozilla/5.0"}) as sess:
+            async with sess.get(url, timeout=aiohttp.ClientTimeout(total=12)) as r:
+                if r.status != 200:
+                    return None
+                html = await r.text()
+    except Exception:
+        return None
+    import re as _re
+    idx = html.find("PLN")
+    if idx == -1:
+        return None
+    window = html[idx:idx + 1200]
+    for m in _re.finditer(r"(\d{1,2}[.,]\d{2,4})", window):
+        try:
+            v = float(m.group(1).replace(",", "."))
+        except ValueError:
+            continue
+        if 8.0 <= v <= 20.0:  # разумный коридор для злотого к гривне
+            return v
+    return None
+
+
+async def _pumb_legacy_unused():
+    """Старая попытка прямого запроса к сайту ПУМБ — закрыт Cloudflare."""
     for url in ("https://about.pumb.ua/info/currency_converter/json",
                 "https://about.pumb.ua/api/currency/rate"):
         try:
@@ -324,7 +365,7 @@ async def fetch_rates(base="UAH"):
       PLN/UAH — ПУМБ, при недоступности выводится из доллара через 3.840.
     """
     now = time.time()
-    if _rates_cache["data"] and (now - _rates_cache["ts"]) < 900:
+    if _rates_cache["data"] and (now - _rates_cache["ts"]) < 900 and not _rates_cache.get("dirty"):
         return _rates_cache["data"]
 
     uah_per_usd = None
@@ -345,19 +386,21 @@ async def fetch_rates(base="UAH"):
     else:
         source_usd = "binance_p2p"
 
+    usd_pln = get_usd_pln()
     if uah_per_pln is None:
-        uah_per_pln = uah_per_usd / USD_PLN_FIXED
+        uah_per_pln = uah_per_usd / usd_pln
         source_pln = "derived_from_usd"
     else:
         source_pln = "pumb"
 
+    _rates_cache["dirty"] = False
     result = {
         "ok": True,
         "base": "UAH",
         "rates": {"USD": 1.0 / uah_per_usd, "PLN": 1.0 / uah_per_pln},
         "quotes": {"UAH_per_USD": round(uah_per_usd, 4),
                    "UAH_per_PLN": round(uah_per_pln, 4),
-                   "USD_per_PLN_fixed": USD_PLN_FIXED},
+                   "USD_per_PLN": usd_pln},
         "sources": {"USD": source_usd, "PLN": source_pln},
         "ts": now,
     }
@@ -687,6 +730,27 @@ async def api_meta_update(request):
         log.error("api_meta_update error:\n%s", traceback.format_exc())
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
+async def api_settings_get(request):
+    return web.json_response({"ok": True, "usd_pln": get_usd_pln(),
+                              "default": USD_PLN_DEFAULT})
+
+
+async def api_settings_set(request):
+    try:
+        data = await request.json()
+        v = float(str(data.get("usd_pln", "")).replace(",", "."))
+        if not (0.1 <= v <= 100):
+            return web.json_response({"ok": False, "error": "курс вне разумных границ"},
+                                     status=400)
+        meta_set("usd_pln_rate", str(v))
+        _rates_cache["dirty"] = True  # пересчитать курсы при следующем запросе
+        log.info("USD/PLN set to %s", v)
+        return web.json_response({"ok": True, "usd_pln": v})
+    except Exception as e:
+        log.error("api_settings_set:\n%s", traceback.format_exc())
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+
+
 # ─── ROUTES ───
 app.router.add_get("/", serve_webapp)
 app.router.add_get("/health", health)
@@ -694,6 +758,8 @@ app.router.add_post("/api/auth", api_auth)
 app.router.add_post("/api/expense", api_expense)
 app.router.add_get("/api/stats", api_stats)
 app.router.add_get("/api/rates", api_rates)
+app.router.add_get("/api/settings", api_settings_get)
+app.router.add_post("/api/settings", api_settings_set)
 app.router.add_get("/api/meta", api_meta_get)
 app.router.add_post("/api/meta", api_meta_update)
 app.router.add_get("/v2", serve_v2_index)
