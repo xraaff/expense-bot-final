@@ -334,6 +334,16 @@ async def cmd_add(message: types.Message):
     ])
     await message.answer("Заполни форму:", reply_markup=kb)
 
+@dp.message(Command("beta"))
+async def cmd_beta(message: types.Message):
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(
+            text="Открыть новый интерфейс",
+            web_app=WebAppInfo(url=with_cache_bust(WEBAPP_URL + "/v2"))
+        )]
+    ])
+    await message.answer("Homebase — бета нового интерфейса:", reply_markup=kb)
+
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     await message.answer(
