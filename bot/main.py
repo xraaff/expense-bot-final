@@ -334,6 +334,16 @@ async def cmd_add(message: types.Message):
     ])
     await message.answer("Заполни форму:", reply_markup=kb)
 
+@dp.message(Command("beta"))
+async def cmd_beta(message: types.Message):
+    kb = types.InlineKeyboardMarkup(inline_keyboard=[
+        [types.InlineKeyboardButton(
+            text="Открыть новый интерфейс",
+            web_app=WebAppInfo(url=with_cache_bust(WEBAPP_URL + "/v2"))
+        )]
+    ])
+    await message.answer("Homebase — бета нового интерфейса:", reply_markup=kb)
+
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
     await message.answer(
@@ -402,6 +412,7 @@ async def handle_webapp_data(message: types.Message):
 # ─── AIOHTTP WEB SERVER ───
 app = web.Application()
 WEBAPP_DIR = Path(__file__).parent.parent / "webapp"
+V2_DIR = WEBAPP_DIR / "v2"
 
 async def serve_webapp(request):
     return web.FileResponse(WEBAPP_DIR / "index.html")
@@ -410,6 +421,19 @@ async def serve_static(request):
     fn = request.match_info["filename"]
     fp = WEBAPP_DIR / fn
     return web.FileResponse(fp) if fp.exists() else web.Response(status=404)
+
+async def serve_v2_index(request):
+    idx = V2_DIR / "index.html"
+    if not idx.exists():
+        return web.Response(status=404, text="v2 build not found")
+    return web.FileResponse(idx)
+
+async def serve_v2_static(request):
+    rel = request.match_info["path"]
+    fp = (V2_DIR / rel).resolve()
+    if not str(fp).startswith(str(V2_DIR.resolve())) or not fp.is_file():
+        return web.Response(status=404)
+    return web.FileResponse(fp)
 
 async def health(request):
     try:
@@ -593,6 +617,9 @@ app.router.add_get("/api/stats", api_stats)
 app.router.add_get("/api/rates", api_rates)
 app.router.add_get("/api/meta", api_meta_get)
 app.router.add_post("/api/meta", api_meta_update)
+app.router.add_get("/v2", serve_v2_index)
+app.router.add_get("/v2/", serve_v2_index)
+app.router.add_get("/v2/{path:.*}", serve_v2_static)
 app.router.add_get("/{filename}", serve_static)
 
 # ─── KEEP-ALIVE ───

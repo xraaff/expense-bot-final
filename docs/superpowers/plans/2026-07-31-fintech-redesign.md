@@ -18,7 +18,7 @@
 - `vite.config.ts`: `build.target: ['es2020', 'safari14']` — Telegram Desktop рапортует WebApp API 6.0, старый WebKit.
 - Tailwind v4 конфигурируется из CSS через `@theme`. Файла `tailwind.config.ts` в проекте нет.
 - Палитра неизменна: `--grad: linear-gradient(135deg,#AA00FF 0%,#FF9500 40%,#FFE620 70%,#68CE66 100%)`, `--ac: #FF9500`, тёмная `--bg #08080a --s1 #111114 --s2 #19191f`, светлая `--bg #f5f5f7 --s1 #ffffff --s2 #ededf0`.
-- Градиент применяется ровно к двум сущностям: сумма-герой и первичная кнопка. Больше нигде.
+- Градиент применяется ровно к трём сущностям: сумма-герой, первичная кнопка и логотип на экране входа. Больше нигде.
 - Семантические цвета: `--pos #68CE66`, `--neg #FF5A5F`.
 - Контраст WCAG AA: основной текст ≥ 7:1 к фону, вторичный ≥ 4.5:1.
 - Веса шрифта 300–600. Вес ≥ 700 на финансовых данных не используется.
@@ -174,7 +174,7 @@ dist
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <title>Expenses</title>
+    <title>Homebase</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
@@ -2499,7 +2499,7 @@ export default function App() {
   if (!role) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-8">
-        <h1 className="gradient-text text-2xl font-semibold">EXPENSE TRACKER</h1>
+        <h1 className="gradient-text text-2xl font-semibold">Homebase</h1>
         <TextField value={key} onChange={setKey} className="w-full space-y-2">
           <Label className="text-sm" style={{ color: 'var(--tx2)' }}>Ключ доступа</Label>
           <Input type="password"
