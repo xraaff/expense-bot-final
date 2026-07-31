@@ -261,38 +261,112 @@ def meta_get_sources():
 # ─── RATES CACHE ───
 _rates_cache = {"data": None, "ts": 0}
 
+USD_PLN_FIXED = 3.840  # злотых за доллар, задано владельцем
+
+async def _binance_p2p_uah_per_usdt():
+    """Средняя цена продажи USDT за гривну по верхним объявлениям Binance P2P."""
+    url = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+    payload = {"asset": "USDT", "fiat": "UAH", "tradeType": "SELL",
+               "page": 1, "rows": 10, "payTypes": [], "publisherType": None}
+    async with aiohttp.ClientSession() as s:
+        async with s.post(url, json=payload,
+                          timeout=aiohttp.ClientTimeout(total=12)) as r:
+            if r.status != 200:
+                return None
+            data = await r.json()
+    prices = []
+    for a in (data.get("data") or []):
+        try:
+            prices.append(float(a["adv"]["price"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not prices:
+        return None
+    return sum(prices) / len(prices)
+
+
+async def _pumb_uah_per_pln():
+    """Курс злотого в ПУМБ. Сайт закрыт Cloudflare — при неудаче возвращаем None,
+    и злотый выводится из доллара по фиксированному USD_PLN_FIXED."""
+    for url in ("https://about.pumb.ua/info/currency_converter/json",
+                "https://about.pumb.ua/api/currency/rate"):
+        try:
+            async with aiohttp.ClientSession() as s:
+                async with s.get(url, timeout=aiohttp.ClientTimeout(total=8)) as r:
+                    if r.status != 200:
+                        continue
+                    if "json" not in (r.headers.get("Content-Type") or ""):
+                        continue
+                    data = await r.json(content_type=None)
+        except Exception:
+            continue
+        for row in (data if isinstance(data, list) else data.get("data", []) or []):
+            if not isinstance(row, dict):
+                continue
+            code = str(row.get("code") or row.get("currency") or "").upper()
+            if code in ("PLN", "985"):
+                for k in ("sale", "sell", "ask", "rate"):
+                    try:
+                        v = float(row[k])
+                        if v > 0:
+                            return v
+                    except (KeyError, TypeError, ValueError):
+                        continue
+    return None
+
+
 async def fetch_rates(base="UAH"):
+    """Курсы с базой в гривне: значение — сколько целевой валюты в одной гривне.
+
+    Источники (по требованию владельца):
+      UAH/USD — средняя P2P Binance на продажу USDT за гривну;
+      USD/PLN — фиксировано 3.840;
+      PLN/UAH — ПУМБ, при недоступности выводится из доллара через 3.840.
+    """
     now = time.time()
-    if _rates_cache["data"] and (now - _rates_cache["ts"]) < 3600:
+    if _rates_cache["data"] and (now - _rates_cache["ts"]) < 900:
         return _rates_cache["data"]
+
+    uah_per_usd = None
     try:
-        # Try frankfurter.app first (free, no key)
-        url = f"https://api.frankfurter.app/latest?from={base}&to=USD,PLN,EUR"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    rates = data.get("rates", {})
-                    result = {"ok": True, "base": base, "rates": rates, "ts": now}
-                    _rates_cache["data"] = result
-                    _rates_cache["ts"] = now
-                    log.info("Rates fetched: %s", rates)
-                    return result
+        uah_per_usd = await _binance_p2p_uah_per_usdt()
     except Exception:
-        log.warning("Rates fetch failed:\n%s", traceback.format_exc())
-    # fallback hardcoded approx rates
-    if base == "UAH":
-        fallback = {"USD": 0.024, "PLN": 0.096, "EUR": 0.022}
-    elif base == "USD":
-        fallback = {"UAH": 41.5, "PLN": 4.0, "EUR": 0.92}
-    elif base == "PLN":
-        fallback = {"UAH": 10.4, "USD": 0.25, "EUR": 0.23}
+        log.warning("Binance P2P failed:\n%s", traceback.format_exc())
+
+    uah_per_pln = None
+    try:
+        uah_per_pln = await _pumb_uah_per_pln()
+    except Exception:
+        log.warning("PUMB failed:\n%s", traceback.format_exc())
+
+    if uah_per_usd is None:
+        uah_per_usd = 47.5  # запасной, если Binance недоступен
+        source_usd = "fallback"
     else:
-        fallback = {}
-    result = {"ok": False, "base": base, "rates": fallback, "ts": now, "fallback": True}
+        source_usd = "binance_p2p"
+
+    if uah_per_pln is None:
+        uah_per_pln = uah_per_usd / USD_PLN_FIXED
+        source_pln = "derived_from_usd"
+    else:
+        source_pln = "pumb"
+
+    result = {
+        "ok": True,
+        "base": "UAH",
+        "rates": {"USD": 1.0 / uah_per_usd, "PLN": 1.0 / uah_per_pln},
+        "quotes": {"UAH_per_USD": round(uah_per_usd, 4),
+                   "UAH_per_PLN": round(uah_per_pln, 4),
+                   "USD_per_PLN_fixed": USD_PLN_FIXED},
+        "sources": {"USD": source_usd, "PLN": source_pln},
+        "ts": now,
+    }
     _rates_cache["data"] = result
     _rates_cache["ts"] = now
+    log.info("Rates: 1 USD = %.2f UAH (%s), 1 PLN = %.2f UAH (%s)",
+             uah_per_usd, source_usd, uah_per_pln, source_pln)
     return result
+
 
 # ─── BOT ───
 bot = Bot(token=BOT_TOKEN)

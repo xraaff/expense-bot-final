@@ -3,11 +3,23 @@ import { ChartPie } from '@phosphor-icons/react';
 import { EmptyState } from '../components/EmptyState';
 import { MoneyText } from '../components/MoneyText';
 import { byCategory, byDay, bySource, filterMonth, totalFor } from '../lib/aggregate';
-import { pctDelta } from '../lib/money';
+import { pctDelta, formatMoney } from '../lib/money';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, Rates } from '../lib/types';
 
 const PALETTE = ['#AA00FF', '#FF9500', '#FFE620', '#68CE66', '#FF5A5F', '#8a8a9a'];
+
+function DayTooltip({ active, payload, currency }: any) {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload as { label: string; total: number };
+  return (
+    <div className="rounded-xl border px-3 py-2 text-xs shadow-lg"
+         style={{ borderColor: 'var(--bd)', background: 'var(--s1)', color: 'var(--tx)' }}>
+      <p style={{ color: 'var(--tx2)' }}>{p.label}</p>
+      <p className="tnum mt-0.5 font-semibold">{formatMoney(p.total, currency)}</p>
+    </div>
+  );
+}
 
 interface Props {
   items: Expense[];
@@ -38,7 +50,13 @@ export function Analytics({ items, currency, rates, month }: Props) {
   const srcs = bySource(current, currency, rates);
   const daily = Object.entries(byDay(current, currency, rates))
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, total]) => ({ date: date.slice(8), total }));
+    .map(([iso, total]) => ({
+      iso,
+      day: String(Number(iso.slice(8))),
+      label: new Date(`${iso}T00:00:00Z`).toLocaleDateString('ru-RU',
+        { day: 'numeric', month: 'long' }),
+      total: Math.round(total),
+    }));
 
   return (
     <div className="space-y-4 px-5 pt-5 pb-28">
@@ -92,13 +110,9 @@ export function Analytics({ items, currency, rates, month }: Props) {
         <div style={{ height: 160 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={daily}>
-              <XAxis dataKey="date" tick={{ fill: 'var(--tx2)', fontSize: 10 }}
+              <XAxis dataKey="day" tick={{ fill: 'var(--tx2)', fontSize: 10 }}
                      axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: 'var(--s2)' }}
-                       contentStyle={{
-                         background: 'var(--s1)', border: '1px solid var(--bd)',
-                         borderRadius: 12, fontSize: 12,
-                       }} />
+              <Tooltip cursor={{ fill: 'var(--s2)' }} content={<DayTooltip currency={currency} />} />
               <Bar dataKey="total" fill="var(--color-ac)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
