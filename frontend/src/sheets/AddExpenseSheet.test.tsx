@@ -45,4 +45,22 @@ describe('AddExpenseSheet', () => {
     render(<AddExpenseSheet {...base} initial={initial} onSubmit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Удалить' })).toBeInTheDocument();
   });
+
+  it('по умолчанию подставляет сегодняшнюю дату', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(<AddExpenseSheet {...base} onSubmit={onSubmit} />);
+    await user.type(screen.getByRole('textbox', { name: 'Сумма' }), '100');
+    await user.click(screen.getByRole('button', { name: 'Кафе' }));
+    await user.click(screen.getByRole('button', { name: 'Записать' }));
+    const today = new Date().toISOString().slice(0, 10);
+    expect(onSubmit.mock.calls[0][0].date).toBe(today);
+  });
+
+  it('показывает редактируемые сегменты даты', () => {
+    render(<AddExpenseSheet {...base} onSubmit={vi.fn()} />);
+    expect(screen.getByText('Дата')).toBeInTheDocument();
+    // DateSegment отрисовывает день, месяц и год как spinbutton — значит поле реально редактируемое
+    expect(screen.getAllByRole('spinbutton').length).toBeGreaterThanOrEqual(3);
+  });
 });

@@ -2,7 +2,10 @@ import { useState } from 'react';
 import {
   Button, Dialog, Modal, ModalOverlay, TextField, Label, Input, TextArea,
   ToggleButton, ToggleButtonGroup,
+  DatePicker, Group, DateInput, DateSegment, Popover, Calendar,
+  CalendarGrid, CalendarCell, Heading,
 } from 'react-aria-components';
+import { CalendarDate, getLocalTimeZone, today as todayIn } from '@internationalized/date';
 import { CategoryTile } from '../components/CategoryTile';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
@@ -21,8 +24,12 @@ interface Props {
   onDelete?: (id: string) => Promise<void>;
 }
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+function parseISO(iso: string): CalendarDate {
+  return new CalendarDate(
+    Number(iso.slice(0, 4)),
+    Number(iso.slice(5, 7)),
+    Number(iso.slice(8, 10))
+  );
 }
 
 export function AddExpenseSheet(props: Props) {
@@ -33,7 +40,9 @@ export function AddExpenseSheet(props: Props) {
   const [source, setSource] = useState(initial?.source ?? sources[0] ?? 'Общий');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [payer, setPayer] = useState(initial?.payer ?? role);
-  const [date] = useState(initial?.date ?? today());
+  const [date, setDate] = useState<CalendarDate>(
+    initial ? parseISO(initial.date) : todayIn(getLocalTimeZone())
+  );
   const [busy, setBusy] = useState(false);
 
   const numeric = Number(amount.replace(',', '.'));
@@ -45,7 +54,7 @@ export function AddExpenseSheet(props: Props) {
     try {
       await props.onSubmit({
         id: initial?.id,
-        date, amount: numeric, currency, category,
+        date: date.toString(), amount: numeric, currency, category,
         description, payer, source, user_id: userId,
       });
       onOpenChange(false);
@@ -96,6 +105,42 @@ export function AddExpenseSheet(props: Props) {
                 </ToggleButton>
               ))}
             </ToggleButtonGroup>
+
+            <DatePicker aria-label="Дата" value={date} onChange={(v) => v && setDate(v)}
+                        className="space-y-2">
+              <Label className="text-[10px] font-semibold uppercase tracking-[0.15em]"
+                     style={{ color: 'var(--tx2)' }}>Дата</Label>
+              <Group aria-label="Дата"
+                     className="flex items-center justify-between rounded-2xl border px-4 py-3"
+                     style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
+                <DateInput className="tnum flex gap-0.5 text-sm">
+                  {(segment) => (
+                    <DateSegment segment={segment}
+                                 className="px-0.5 outline-none focus:text-[var(--color-ac)]" />
+                  )}
+                </DateInput>
+                <Button className="text-sm" style={{ color: 'var(--color-ac)' }}>Выбрать</Button>
+              </Group>
+              <Popover className="rounded-2xl border p-3 shadow-xl"
+                       style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
+                <Dialog>
+                  <Calendar>
+                    <header className="mb-2 flex items-center justify-between">
+                      <Button slot="previous" className="px-2">‹</Button>
+                      <Heading className="text-sm font-medium" />
+                      <Button slot="next" className="px-2">›</Button>
+                    </header>
+                    <CalendarGrid className="text-sm">
+                      {(d) => (
+                        <CalendarCell date={d}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg
+                                     selected:bg-[var(--color-ac)] selected:text-black" />
+                      )}
+                    </CalendarGrid>
+                  </Calendar>
+                </Dialog>
+              </Popover>
+            </DatePicker>
 
             <section className="space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em]"
