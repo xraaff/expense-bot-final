@@ -64,20 +64,9 @@ describe('Operations', () => {
     expect(screen.getAllByTestId('tx')).toHaveLength(2);
   });
 
-  it('рисует ячейку хитмапа на каждый день с тратами', () => {
+  it('под поиском нет цветных кубиков-хитмапа', () => {
     render(<Operations {...props} />);
-    expect(screen.getByTestId(`heat-${D0}`)).toBeInTheDocument();
-  });
-
-  it('насыщенность ячейки пропорциональна сумме дня', () => {
-    const items = [
-      mk({ id: 'a', date: D1, amount: 100 }),
-      mk({ id: 'b', date: D0, amount: 400 }),
-    ];
-    render(<Operations {...props} items={items} />);
-    const weak = Number(screen.getByTestId(`heat-${D1}`).style.opacity);
-    const strong = Number(screen.getByTestId(`heat-${D0}`).style.opacity);
-    expect(strong).toBeGreaterThan(weak);
-    expect(weak).toBeGreaterThanOrEqual(0.15);
+    expect(screen.queryByTestId(`heat-${D0}`)).toBeNull();
+    expect(screen.queryByTestId(`heat-${D1}`)).toBeNull();
   });
 });

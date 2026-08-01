@@ -18,7 +18,8 @@ function ru(d: CalendarDate): string {
     .toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-/** Быстрые пресеты — на телефоне ими пользуются чаще, чем календарём. */
+/** Быстрые пресеты — на телефоне ими пользуются чаще, чем календарём.
+ *  Всё, что длиннее месяца, набирается календарём: лишние чипы только шумели. */
 function presets(): { label: string; make: () => Period }[] {
   const t = todayIn(getLocalTimeZone());
   return [
@@ -30,8 +31,6 @@ function presets(): { label: string; make: () => Period }[] {
         return { start: p, end: p.set({ day: p.calendar.getDaysInMonth(p) }) };
       },
     },
-    { label: '3 месяца', make: () => ({ start: t.subtract({ months: 3 }), end: t }) },
-    { label: 'Год', make: () => ({ start: t.set({ month: 1, day: 1 }), end: t }) },
   ];
 }
 

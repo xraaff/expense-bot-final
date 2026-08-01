@@ -49,4 +49,28 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: 'Добавить трату' })).toBeInTheDocument()
     );
   });
+
+  it('вторая открытая трата показывает свои поля, а не первой', async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    const mk = (id: string, amount: number, description: string) => ({
+      id, date: day, amount, currency: 'UAH' as const, category: 'Продукты',
+      description, source: 'Общий', payer: '', user_id: '1', created_at: `${day} 10:00:00`,
+    });
+    vi.spyOn(api, 'fetchStats').mockResolvedValue([mk('a', 111, 'первая'), mk('b', 222, 'вторая')]);
+    localStorage.setItem('role', 'Vova');
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole('tab', { name: /Операции/ }));
+    const rows = await screen.findAllByTestId('tx');
+    expect(rows).toHaveLength(2);
+
+    await user.click(rows[0].firstElementChild as HTMLElement);
+    expect((await screen.findByLabelText('Сумма')).getAttribute('value')).toBe('111');
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByLabelText('Сумма')).toBeNull());
+
+    await user.click(screen.getAllByTestId('tx')[1].firstElementChild as HTMLElement);
+    expect((await screen.findByLabelText('Сумма')).getAttribute('value')).toBe('222');
+  });
 });

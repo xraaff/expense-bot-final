@@ -311,6 +311,10 @@ export default function App() {
              onDismiss={() => setDismissed(true)} />
 
       <AddExpenseSheet
+        /* key пересоздаёт форму под каждую трату: useState-инициализаторы
+           срабатывают один раз, поэтому без него тап по строке показывал
+           поля той траты, которую открыли первой */
+        key={editing?.id ?? 'new'}
         isOpen={sheetOpen}
         onOpenChange={(o) => { setSheetOpen(o); if (!o) setEditing(undefined); }}
         categories={categories}

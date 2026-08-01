@@ -9,10 +9,29 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return (await r.json()) as T;
 }
 
+/** Google Sheets умеет отдать дату числом-серийником, а id — числом.
+ *  Один кривой тип валил весь интерфейс (created_at.localeCompare),
+ *  поэтому приводим строковые поля к строкам прямо на входе. */
+function normalize(r: Expense): Expense {
+  const s = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+  return {
+    ...r,
+    id: s(r.id),
+    date: s(r.date),
+    currency: s(r.currency) as Expense['currency'],
+    category: s(r.category),
+    description: s(r.description),
+    source: s(r.source),
+    user_id: s(r.user_id),
+    created_at: s(r.created_at),
+    amount: Number(r.amount) || 0,
+  };
+}
+
 export async function fetchStats(from: string, to: string): Promise<Expense[]> {
   const r = await fetch(`/api/stats?from=${from}&to=${to}`);
   const j = (await r.json()) as { ok: boolean; rows?: Expense[] };
-  return j.rows ?? [];
+  return (j.rows ?? []).map(normalize);
 }
 
 export async function saveExpense(

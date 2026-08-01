@@ -229,21 +229,65 @@ def sheets_delete(data):
         log.error("sheets_delete FAILED:\n%s", traceback.format_exc())
         raise
 
+# Google Sheets считает дни от 30.12.1899 — это её нулевая точка, не Unix-эпоха.
+_SHEET_EPOCH = datetime(1899, 12, 30)
+
+
+def _is_number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _from_serial(v, fmt):
+    try:
+        return (_SHEET_EPOCH + timedelta(days=float(v))).strftime(fmt)
+    except (TypeError, ValueError, OverflowError):
+        return str(v)
+
+
+def _norm_text(v):
+    """Всё, что не сумма и не дата, отдаём строкой без хвоста «.0»."""
+    if v is None:
+        return ""
+    if _is_number(v):
+        return str(int(v)) if float(v).is_integer() else str(v)
+    return str(v)
+
+
+def _norm_row(r):
+    """Приводим строку таблицы к тому виду, который ждёт фронт.
+
+    UNFORMATTED_VALUE спасает суммы, но взамен отдаёт даты числами-серийниками
+    (46234.88 вместо '2026-08-01 21:07:23') у строк, записанных ещё режимом
+    USER_ENTERED. Фронт звал created_at.localeCompare и падал.
+    """
+    out = dict(r)
+    out["amount"] = _norm_amount(r.get("amount", 0))
+    d = r.get("date", "")
+    out["date"] = _from_serial(d, "%Y-%m-%d") if _is_number(d) else str(d or "")
+    c = r.get("created_at", "")
+    out["created_at"] = _from_serial(c, "%Y-%m-%d %H:%M:%S") if _is_number(c) else str(c or "")
+    for k in ("id", "currency", "category", "description", "payer", "source", "user_id"):
+        out[k] = _norm_text(r.get(k))
+    return out
+
+
 def sheets_get_all_raw():
     """Строки листа RAW.
 
     Читаем СЫРЫЕ значения, а не отформатированные. При локали таблицы с
     запятичным разделителем число 25.5 показывается как "25,5", и gspread,
     вычищая запятую как разделитель разрядов, превращал его в 255 —
-    трата в 25.5 злотых возвращалась как 255.
+    трата в 25.5 злотых возвращалась как 255. Дальше _norm_row чинит побочку:
+    сырые даты приходят числами.
     """
     ws = get_ws("RAW")
     try:
-        return ws.get_all_records(value_render_option="UNFORMATTED_VALUE")
+        rows = ws.get_all_records(value_render_option="UNFORMATTED_VALUE")
     except TypeError:
         # старые версии gspread принимают перечисление, а не строку
         from gspread.utils import ValueRenderOption
-        return ws.get_all_records(value_render_option=ValueRenderOption.unformatted)
+        rows = ws.get_all_records(value_render_option=ValueRenderOption.unformatted)
+    return [_norm_row(r) for r in rows]
 
 def sheets_get_raw_values():
     """Return all values from RAW (including header)."""

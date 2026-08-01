@@ -51,9 +51,6 @@ export function Operations({ items, currency, rates, onPickExpense, period, onPe
     [totals, filtered]
   );
 
-  const heatDates = Object.keys(totals).sort();
-  const heatMax = heatDates.length ? Math.max(...heatDates.map((d) => totals[d])) : 0;
-
   return (
     <div className="pb-28">
       <div className="px-5 pt-5 pb-3 space-y-3">
@@ -70,20 +67,6 @@ export function Operations({ items, currency, rates, onPickExpense, period, onPe
           </div>
         </SearchField>
       </div>
-
-      {heatDates.length > 0 && (
-        <div className="mb-3 flex flex-wrap gap-1 px-5">
-          {heatDates.map((d) => (
-            <span key={d} data-testid={`heat-${d}`} title={d}
-                  className="h-6 w-6 rounded-md"
-                  style={{
-                    background: 'var(--color-ac)',
-                    // минимум 0.15 — самая мелкая трата всё равно остаётся видимой
-                    opacity: String(Math.max(0.15, totals[d] / heatMax)),
-                  }} />
-          ))}
-        </div>
-      )}
 
       {days.length === 0 ? (
         <EmptyState icon={MagnifyingGlass} title="Ничего не найдено"
