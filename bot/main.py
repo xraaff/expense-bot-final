@@ -230,10 +230,20 @@ def sheets_delete(data):
         raise
 
 def sheets_get_all_raw():
-    """Return all rows from RAW as list of dicts."""
+    """Строки листа RAW.
+
+    Читаем СЫРЫЕ значения, а не отформатированные. При локали таблицы с
+    запятичным разделителем число 25.5 показывается как "25,5", и gspread,
+    вычищая запятую как разделитель разрядов, превращал его в 255 —
+    трата в 25.5 злотых возвращалась как 255.
+    """
     ws = get_ws("RAW")
-    records = ws.get_all_records()
-    return records
+    try:
+        return ws.get_all_records(value_render_option="UNFORMATTED_VALUE")
+    except TypeError:
+        # старые версии gspread принимают перечисление, а не строку
+        from gspread.utils import ValueRenderOption
+        return ws.get_all_records(value_render_option=ValueRenderOption.unformatted)
 
 def sheets_get_raw_values():
     """Return all values from RAW (including header)."""
