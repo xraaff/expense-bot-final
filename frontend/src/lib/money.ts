@@ -27,3 +27,22 @@ export function pctDelta(current: number, previous: number): number | null {
   if (previous === 0) return null;
   return ((current - previous) / previous) * 100;
 }
+
+/**
+ * Разбор суммы, введённой человеком. Принимает и точку, и запятую как
+ * десятичный разделитель, терпит пробелы и неразрывные пробелы между разрядами.
+ * Возвращает NaN, если из строки не выходит осмысленного положительного числа.
+ */
+export function parseAmount(raw: string): number {
+  const cleaned = raw
+    .replace(/[\s\u00A0\u202F]/g, '')  // пробелы, в том числе неразрывные
+    .replace(/,/g, '.');                 // запятая как десятичный разделитель
+  if (cleaned === '' || cleaned === '.') return NaN;
+  // Несколько точек: последняя считается десятичной, остальные — разрядные
+  const parts = cleaned.split('.');
+  const normalized = parts.length <= 2
+    ? cleaned
+    : `${parts.slice(0, -1).join('')}.${parts[parts.length - 1]}`;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : NaN;
+}

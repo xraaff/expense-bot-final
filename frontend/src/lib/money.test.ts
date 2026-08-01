@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatMoney, convert, pctDelta } from './money';
+import { formatMoney, convert, pctDelta, parseAmount } from './money';
 
 const RATES = { USD: 0.024, PLN: 0.096, EUR: 0.022 };
 
@@ -51,5 +51,32 @@ describe('pctDelta', () => {
   });
   it('возвращает null при нулевой базе', () => {
     expect(pctDelta(50, 0)).toBeNull();
+  });
+});
+
+describe('parseAmount', () => {
+  it('принимает точку как десятичный разделитель', () => {
+    expect(parseAmount('25.5')).toBe(25.5);
+  });
+  it('принимает запятую как десятичный разделитель', () => {
+    expect(parseAmount('25,5')).toBe(25.5);
+  });
+  it('терпит пробелы между разрядами', () => {
+    expect(parseAmount('1 234,56')).toBe(1234.56);
+  });
+  it('терпит неразрывный пробел', () => {
+    expect(parseAmount('1\u00A0234.5')).toBe(1234.5);
+  });
+  it('несколько точек: последняя десятичная', () => {
+    expect(parseAmount('1.234.56')).toBe(1234.56);
+  });
+  it('целое без разделителя', () => {
+    expect(parseAmount('300')).toBe(300);
+  });
+  it('пустая строка не число', () => {
+    expect(Number.isNaN(parseAmount(''))).toBe(true);
+  });
+  it('мусор не число', () => {
+    expect(Number.isNaN(parseAmount('abc'))).toBe(true);
   });
 });

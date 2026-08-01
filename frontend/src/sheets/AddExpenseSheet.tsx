@@ -9,6 +9,7 @@ import { CategoryTile } from '../components/CategoryTile';
 import { CategoryMenu } from '../components/CategoryMenu';
 import { Plus, CalendarBlank, PencilSimple } from '@phosphor-icons/react';
 import { sourceIcon } from '../lib/icons';
+import { parseAmount } from '../lib/money';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
 
 const CURRENCIES: Currency[] = ['UAH', 'USD', 'PLN', 'EUR'];
@@ -60,7 +61,7 @@ export function AddExpenseSheet(props: Props) {
   const [editCats, setEditCats] = useState(false);
   const [editSrcs, setEditSrcs] = useState(false);
 
-  const numeric = Number(amount.replace(',', '.'));
+  const numeric = parseAmount(amount);
   const valid = Number.isFinite(numeric) && numeric > 0 && category !== '';
 
   async function submit(): Promise<void> {

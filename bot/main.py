@@ -129,13 +129,29 @@ def _reauth_and_retry(name="RAW"):
 
 # ─── SHEETS OPERATIONS ───
 
+def _norm_amount(v):
+    """Сумма всегда уходит в таблицу числом. Принимаем и точку, и запятую,
+    терпим пробелы между разрядами. Непарсимое оставляем как есть."""
+    if isinstance(v, (int, float)):
+        return v
+    raw = str(v or "").replace("\u00a0", "").replace("\u202f", "").replace(" ", "")
+    raw = raw.replace(",", ".")
+    parts = raw.split(".")
+    if len(parts) > 2:  # несколько точек: последняя десятичная
+        raw = "".join(parts[:-1]) + "." + parts[-1]
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return v
+
+
 def sheets_add(data):
     try:
         ws = get_ws("RAW")
         row = [
             data.get("id", ""),
             data.get("date", ""),
-            data.get("amount", ""),
+            _norm_amount(data.get("amount", "")),
             data.get("currency", "UAH"),
             data.get("category", ""),
             data.get("description", ""),
@@ -153,7 +169,7 @@ def sheets_add(data):
             row = [
                 data.get("id", ""),
                 data.get("date", ""),
-                data.get("amount", ""),
+                _norm_amount(data.get("amount", "")),
                 data.get("currency", "UAH"),
                 data.get("category", ""),
                 data.get("description", ""),
@@ -183,7 +199,7 @@ def sheets_update(data):
         # update fields B-H (date, amount, currency, category, description, payer, source)
         vals = [
             data.get("date", ws.cell(r, 2).value or ""),
-            data.get("amount", ws.cell(r, 3).value or ""),
+            _norm_amount(data.get("amount", ws.cell(r, 3).value or "")),
             data.get("currency", ws.cell(r, 4).value or ""),
             data.get("category", ws.cell(r, 5).value or ""),
             data.get("description", ws.cell(r, 6).value or ""),
