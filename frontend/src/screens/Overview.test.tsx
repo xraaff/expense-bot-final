@@ -37,10 +37,9 @@ describe('Overview', () => {
     expect(names).toEqual(['Кафе', 'Продукты']);
   });
 
-  it('показывает распределение плательщиков', () => {
+  it('не показывает разбивку по плательщикам — персонализация убрана', () => {
     render(<Overview {...props} />);
-    expect(screen.getByTestId('payer-Vova')).toHaveTextContent('200 ₴');
-    expect(screen.getByTestId('payer-Karina')).toHaveTextContent('300 ₴');
+    expect(screen.queryByTestId('payer-Vova')).not.toBeInTheDocument();
   });
 
   it('на пустом месяце показывает пустое состояние', () => {

@@ -13,6 +13,9 @@ import { useExpenses } from './lib/useExpenses';
 import { authenticate, fetchMeta, fetchRates, updateMeta } from './lib/api';
 import { initTheme } from './lib/theme';
 import { monthKey } from './lib/aggregate';
+import { MonthPicker } from './components/MonthPicker';
+import type { Period } from './components/PeriodPicker';
+import { CalendarDate, getLocalTimeZone, today as todayIn } from '@internationalized/date';
 import type { Currency, Expense, Rates } from './lib/types';
 
 const Analytics = lazy(() =>
@@ -53,6 +56,26 @@ export default function App() {
   const [customCats, setCustomCats] = useState<string[]>([]);
   const [customSrcs, setCustomSrcs] = useState<string[]>([]);
   const [tab, setTab] = useState('overview');
+  // Период один на операции и аналитику; по умолчанию — текущий месяц с первого числа
+  const [period, setPeriodState] = useState<Period>(() => {
+    const t = todayIn(getLocalTimeZone());
+    try {
+      const raw = localStorage.getItem('period');
+      if (raw) {
+        const p = JSON.parse(raw) as { start: string; end: string };
+        const parse = (iso: string): CalendarDate => new CalendarDate(
+          Number(iso.slice(0, 4)), Number(iso.slice(5, 7)), Number(iso.slice(8, 10)));
+        return { start: parse(p.start), end: parse(p.end) };
+      }
+    } catch { /* повреждённое значение просто игнорируем */ }
+    return { start: t.set({ day: 1 }), end: t };
+  });
+  const setPeriod = (p: Period): void => {
+    setPeriodState(p);
+    localStorage.setItem('period',
+      JSON.stringify({ start: p.start.toString(), end: p.end.toString() }));
+  };
+  const [month, setMonth] = useState(() => monthKey(new Date().toISOString().slice(0, 10)));
   const [ask, setAsk] = useState<
     { title: string; value: string; run: (v: string) => void } | null
   >(null);
@@ -205,11 +228,13 @@ export default function App() {
   }
 
   const userId = String(telegram()?.initDataUnsafe?.user?.id ?? 'web');
-  const month = monthKey(new Date().toISOString().slice(0, 10));
 
   return (
     <div className="min-h-screen">
-      <div className="flex justify-end px-5 pt-3">
+      <div className="flex items-center justify-between px-5 pt-3">
+        {tab === 'overview'
+          ? <MonthPicker value={month} onChange={setMonth} />
+          : <span />}
         <div className="flex gap-1 rounded-full border p-0.5"
              style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
           {DISPLAY_CURRENCIES.map((c) => {
@@ -236,11 +261,13 @@ export default function App() {
         </TabPanel>
         <TabPanel id="operations">
           <Operations items={items} currency={currency} rates={rates}
+                      period={period} onPeriodChange={setPeriod}
                       onPickExpense={(e) => { setEditing(e); setSheetOpen(true); }} />
         </TabPanel>
         <TabPanel id="analytics">
           <Suspense fallback={<Skeleton className="m-5 h-56" />}>
-            <Analytics items={items} currency={currency} rates={rates} month={month} />
+            <Analytics items={items} currency={currency} rates={rates}
+                       period={period} onPeriodChange={setPeriod} />
           </Suspense>
         </TabPanel>
 

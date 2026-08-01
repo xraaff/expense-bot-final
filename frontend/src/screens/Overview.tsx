@@ -1,11 +1,11 @@
 import { Meter, Label } from 'react-aria-components';
 import { KpiHero } from '../components/KpiHero';
-import { PayerSplit } from '../components/PayerSplit';
+import { categoryColor } from '../lib/palette';
 import { TxRow } from '../components/TxRow';
 import { MoneyText } from '../components/MoneyText';
 import { EmptyState } from '../components/EmptyState';
 import { Receipt } from '@phosphor-icons/react';
-import { byCategory, byPayer, filterMonth, totalFor } from '../lib/aggregate';
+import { byCategory, filterMonth, totalFor } from '../lib/aggregate';
 import { pctDelta } from '../lib/money';
 import type { Currency, Expense, Rates } from '../lib/types';
 
@@ -44,14 +44,13 @@ export function Overview({ items, currency, rates, month, onPickExpense }: Props
   return (
     <div className="pb-28">
       <KpiHero total={total} deltaPct={delta} currency={currency} />
-      <PayerSplit totals={byPayer(current, currency, rates)} currency={currency} />
 
       <section className="mx-5 mb-4 rounded-2xl border p-4"
                style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.15em]"
            style={{ color: 'var(--tx2)' }}>Категории</p>
         <div className="space-y-3">
-          {cats.map((c) => (
+          {cats.map((c, i) => (
             <Meter key={c.category} value={c.total} maxValue={total} className="block">
               <div className="mb-1 flex justify-between text-sm">
                 <Label data-testid="cat-name" className="font-medium">{c.category}</Label>
@@ -59,7 +58,7 @@ export function Overview({ items, currency, rates, month, onPickExpense }: Props
               </div>
               <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--s2)' }}>
                 <div className="h-full rounded-full transition-[width] duration-500"
-                     style={{ width: `${(c.total / total) * 100}%`, background: 'var(--color-ac)' }} />
+                     style={{ width: `${(c.total / total) * 100}%`, background: categoryColor(i) }} />
               </div>
             </Meter>
           ))}

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Operations } from './Operations';
 import type { Expense } from '../lib/types';
+import { getLocalTimeZone, today as todayIn } from '@internationalized/date';
 
 // Диапазон по умолчанию — последние три месяца, поэтому фикстуры строятся
 // относительно сегодняшнего дня, иначе тесты протухнут со временем.
@@ -26,7 +27,12 @@ const ITEMS = [
   mk({ id: 'b', amount: 300, category: 'Кафе', description: 'латте' }),
 ];
 
-const props = { items: ITEMS, currency: 'UAH' as const, rates: {}, onPickExpense: vi.fn() };
+const T = todayIn(getLocalTimeZone());
+const props = {
+  items: ITEMS, currency: 'UAH' as const, rates: {}, onPickExpense: vi.fn(),
+  period: { start: T.subtract({ months: 3 }), end: T },
+  onPeriodChange: (): void => {},
+};
 
 describe('Operations', () => {
   it('показывает все операции', () => {
@@ -49,7 +55,7 @@ describe('Operations', () => {
   it('показывает выбор периода', () => {
     render(<Operations {...props} />);
     expect(screen.getByText('Период')).toBeInTheDocument();
-    expect(screen.getAllByRole('spinbutton').length).toBeGreaterThanOrEqual(6);
+    expect(screen.getByRole('button', { name: 'Этот месяц' })).toBeInTheDocument();
   });
 
   it('операции вне выбранного периода не показываются', () => {

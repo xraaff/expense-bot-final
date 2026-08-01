@@ -389,6 +389,41 @@ async def _pumb_legacy_unused():
     return None
 
 
+async def _minfin_bank_rate(bank, code, lo, hi):
+    """Курс ПРОДАЖИ валюты в банке со страницы Минфина.
+    Строка идёт как: <код> <покупка> ... <продажа> — берём большее из двух."""
+    url = f"https://minfin.com.ua/ua/company/{bank}/currency/"
+    try:
+        async with aiohttp.ClientSession(
+                headers={"User-Agent": "Mozilla/5.0"}) as sess:
+            async with sess.get(url, timeout=aiohttp.ClientTimeout(total=12)) as r:
+                if r.status != 200:
+                    return None
+                page = await r.text()
+    except Exception:
+        return None
+    import re as _re
+    idx = page.find(code)
+    if idx == -1:
+        return None
+    window = _re.sub(r"<[^>]+>", " ", page[idx:idx + 1200])
+    found = []
+    for m in _re.finditer(r"(\d{1,3}[.,]\d{2,4})", window):
+        try:
+            v = float(m.group(1).replace(",", "."))
+        except ValueError:
+            continue
+        if lo <= v <= hi:
+            found.append(v)
+        if len(found) == 2:
+            break
+    return max(found) if found else None
+
+
+async def _mono_uah_per_eur():
+    return await _minfin_bank_rate("monobank", "EUR", 35.0, 70.0)
+
+
 async def fetch_rates(base="UAH"):
     """Курсы с базой в гривне: значение — сколько целевой валюты в одной гривне.
 
@@ -407,6 +442,12 @@ async def fetch_rates(base="UAH"):
     except Exception:
         log.warning("Binance P2P failed:\n%s", traceback.format_exc())
 
+    uah_per_eur = None
+    try:
+        uah_per_eur = await _mono_uah_per_eur()
+    except Exception:
+        log.warning("Mono EUR failed:\n%s", traceback.format_exc())
+
     uah_per_pln = None
     try:
         uah_per_pln = await _pumb_uah_per_pln()
@@ -421,6 +462,11 @@ async def fetch_rates(base="UAH"):
 
     usd_pln = get_usd_pln()
     usd_eur = get_usd_eur()
+    if uah_per_eur is None:
+        uah_per_eur = uah_per_usd / usd_eur
+        source_eur = "derived_from_usd"
+    else:
+        source_eur = "mono"
     if uah_per_pln is None:
         uah_per_pln = uah_per_usd / usd_pln
         source_pln = "derived_from_usd"
@@ -433,13 +479,13 @@ async def fetch_rates(base="UAH"):
         "base": "UAH",
         "rates": {"USD": 1.0 / uah_per_usd,
                   "PLN": 1.0 / uah_per_pln,
-                  "EUR": 1.0 / (uah_per_usd / usd_eur)},
+                  "EUR": 1.0 / uah_per_eur},
         "quotes": {"UAH_per_USD": round(uah_per_usd, 4),
                    "UAH_per_PLN": round(uah_per_pln, 4),
                    "USD_per_PLN": usd_pln,
                    "USD_per_EUR": usd_eur,
-                   "UAH_per_EUR": round(uah_per_usd / usd_eur, 4)},
-        "sources": {"USD": source_usd, "PLN": source_pln},
+                   "UAH_per_EUR": round(uah_per_eur, 4)},
+        "sources": {"USD": source_usd, "PLN": source_pln, "EUR": source_eur},
         "ts": now,
     }
     _rates_cache["data"] = result

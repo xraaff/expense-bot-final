@@ -38,7 +38,7 @@ export function RatesCard() {
   return (
     <section className="surface p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="label-cap">Курсы валют</p>
+        <p className="label-cap">Курсы валют к гривне</p>
         <Button aria-label="Обновить курсы" onPress={() => { void load(); }}
                 className="flex items-center gap-1 text-xs font-medium"
                 style={{ color: 'var(--color-ac)' }}>
@@ -53,7 +53,7 @@ export function RatesCard() {
         <ul className="space-y-3">
           <li>
             <div className="flex items-baseline justify-between">
-              <span className="text-sm">1 доллар</span>
+              <span className="text-sm">1 usdt</span>
               <span className="tnum text-sm font-semibold">{q.UAH_per_USD} ₴</span>
             </div>
             <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>
@@ -79,8 +79,10 @@ export function RatesCard() {
             <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>выведен из доллара</p>
           </li>
 
-          <li className="flex items-center justify-between border-t pt-3"
-              style={{ borderColor: 'var(--bd)' }}>
+          <li className="border-t pt-3" style={{ borderColor: 'var(--bd)' }}>
+            <p className="label-cap">Курс стейблкоина к фиату</p>
+          </li>
+          <li className="flex items-center justify-between">
             <div>
               <div className="text-sm">1 usdt в злотых</div>
               <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>задаётся вручную</p>

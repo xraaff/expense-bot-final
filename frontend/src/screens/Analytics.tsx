@@ -2,13 +2,15 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip
 import { ChartPie } from '@phosphor-icons/react';
 import { EmptyState } from '../components/EmptyState';
 import { MoneyText } from '../components/MoneyText';
-import { byCategory, byDay, bySource, filterMonth, totalFor } from '../lib/aggregate';
+import { byCategory, byDay, bySource, totalFor } from '../lib/aggregate';
 import { pctDelta, formatMoney } from '../lib/money';
 import { sourceIcon } from '../lib/icons';
 import { RatesCard } from '../components/RatesCard';
+import { categoryColor, magnitudeColor } from '../lib/palette';
+import { PeriodPicker, type Period } from '../components/PeriodPicker';
 import type { Currency, Expense, Rates } from '../lib/types';
 
-const PALETTE = ['#AA00FF', '#FF9500', '#FFE620', '#68CE66', '#FF5A5F', '#8a8a9a'];
+
 
 function DayTooltip({ active, payload, currency }: any) {
   if (!active || !payload?.length) return null;
@@ -26,21 +28,30 @@ interface Props {
   items: Expense[];
   currency: Currency;
   rates: Rates;
-  month: string;
+  period: Period;
+  onPeriodChange: (p: Period) => void;
 }
 
-function previousMonth(month: string): string {
-  const [y, m] = month.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 2, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+/** Предыдущее окно той же длины — честное сравнение для любого периода. */
+function shiftBack(p: Period): { from: string; to: string } {
+  const days = p.end.compare(p.start);
+  return {
+    from: p.start.subtract({ days: days + 1 }).toString(),
+    to: p.start.subtract({ days: 1 }).toString(),
+  };
 }
 
-export function Analytics({ items, currency, rates, month }: Props) {
-  const current = filterMonth(items, month);
+function inWindow(items: Expense[], from: string, to: string): Expense[] {
+  return items.filter((e) => e.date >= from && e.date <= to);
+}
+
+export function Analytics({ items, currency, rates, period, onPeriodChange }: Props) {
+  const current = inWindow(items, period.start.toString(), period.end.toString());
 
   if (current.length === 0) {
     return (
       <div className="space-y-4 px-5 pt-5 pb-28">
+        <PeriodPicker value={period} onChange={onPeriodChange} />
         <EmptyState icon={ChartPie} title="Нет данных за период"
                     hint="Запишите первую трату" />
         <RatesCard />
@@ -49,7 +60,8 @@ export function Analytics({ items, currency, rates, month }: Props) {
   }
 
   const currentTotal = totalFor(current, currency, rates);
-  const previousTotal = totalFor(filterMonth(items, previousMonth(month)), currency, rates);
+  const back = shiftBack(period);
+  const previousTotal = totalFor(inWindow(items, back.from, back.to), currency, rates);
   const delta = pctDelta(currentTotal, previousTotal);
 
   const cats = byCategory(current, currency, rates);
@@ -63,14 +75,16 @@ export function Analytics({ items, currency, rates, month }: Props) {
         { day: 'numeric', month: 'long' }),
       total: Math.round(total),
     }));
+  const dailyMax = daily.length ? Math.max(...daily.map((d) => d.total)) : 0;
 
   return (
     <div className="space-y-4 px-5 pt-5 pb-28">
+      <PeriodPicker value={period} onChange={onPeriodChange} />
       {delta !== null && (
         <section className="rounded-2xl border p-4"
                  style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em]"
-             style={{ color: 'var(--tx2)' }}>Против прошлого месяца</p>
+             style={{ color: 'var(--tx2)' }}>Против прошлого периода</p>
           <p data-testid="period-delta" className="tnum text-2xl font-medium"
              style={{ color: delta <= 0 ? 'var(--color-pos)' : 'var(--color-neg)' }}>
             {delta <= 0 ? '↓' : '↑'} {Math.abs(delta).toFixed(0)}%
@@ -91,7 +105,7 @@ export function Analytics({ items, currency, rates, month }: Props) {
               <Pie data={cats} dataKey="total" nameKey="category"
                    innerRadius={58} outerRadius={88} paddingAngle={2} stroke="none">
                 {cats.map((_, i) => (
-                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                  <Cell key={i} fill={categoryColor(i)} />
                 ))}
               </Pie>
             </PieChart>
@@ -101,7 +115,7 @@ export function Analytics({ items, currency, rates, month }: Props) {
           {cats.map((c, i) => (
             <li key={c.category} className="flex items-center gap-2 text-sm">
               <span className="h-2.5 w-2.5 rounded-full"
-                    style={{ background: PALETTE[i % PALETTE.length] }} />
+                    style={{ background: categoryColor(i) }} />
               <span className="flex-1">{c.category}</span>
               <MoneyText value={c.total} currency={currency} className="font-medium" />
             </li>
@@ -119,7 +133,11 @@ export function Analytics({ items, currency, rates, month }: Props) {
               <XAxis dataKey="day" tick={{ fill: 'var(--tx2)', fontSize: 10 }}
                      axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: 'var(--s2)' }} content={<DayTooltip currency={currency} />} />
-              <Bar dataKey="total" fill="var(--color-ac)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                {daily.map((d) => (
+                  <Cell key={d.iso} fill={magnitudeColor(d.total, dailyMax)} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>

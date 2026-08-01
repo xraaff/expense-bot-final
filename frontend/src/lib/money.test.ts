@@ -13,8 +13,11 @@ describe('formatMoney', () => {
   it('сжимает крупные суммы', () => {
     expect(formatMoney(1250000, 'UAH', { compact: true })).toBe('1,3 млн ₴');
   });
-  it('округляет дробное до целого', () => {
-    expect(formatMoney(99.6, 'UAH')).toBe('100 ₴');
+  it('сохраняет копейки — конвертация по курсу почти всегда дробная', () => {
+    expect(formatMoney(99.6, 'UAH')).toBe('99,6 ₴');
+  });
+  it('у ровной суммы не рисует лишние нули', () => {
+    expect(formatMoney(300, 'UAH')).toBe('300 ₴');
   });
 });
 

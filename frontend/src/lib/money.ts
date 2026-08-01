@@ -9,7 +9,10 @@ export function formatMoney(
 ): string {
   const n = new Intl.NumberFormat('ru-RU', {
     notation: opts.compact ? 'compact' : 'standard',
-    maximumFractionDigits: opts.compact ? 1 : 0,
+    // Конвертация по курсу почти всегда даёт копейки — их нельзя терять,
+    // но у ровных сумм лишний ноль-ноль ни к чему.
+    maximumFractionDigits: opts.compact ? 1 : 2,
+    minimumFractionDigits: 0,
   }).format(value);
   return `${n} ${SYMBOLS[currency]}`;
 }
