@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import { ChartPie } from '@phosphor-icons/react';
 import { EmptyState } from '../components/EmptyState';
@@ -6,8 +5,7 @@ import { MoneyText } from '../components/MoneyText';
 import { byCategory, byDay, bySource, filterMonth, totalFor } from '../lib/aggregate';
 import { pctDelta, formatMoney } from '../lib/money';
 import { sourceIcon } from '../lib/icons';
-import { fetchSettings, setUsdPln } from '../lib/api';
-import { Button } from 'react-aria-components';
+import { RatesCard } from '../components/RatesCard';
 import type { Currency, Expense, Rates } from '../lib/types';
 
 const PALETTE = ['#AA00FF', '#FF9500', '#FFE620', '#68CE66', '#FF5A5F', '#8a8a9a'];
@@ -37,37 +35,6 @@ function previousMonth(month: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function StablecoinRate() {
-  const [rate, setRate] = useState<number | null>(null);
-  useEffect(() => { void fetchSettings().then((s) => s && setRate(s.usd_pln)); }, []);
-
-  async function change(): Promise<void> {
-    const v = window.prompt('Сколько злотых за 1 доллар?', rate ? String(rate) : '3.840');
-    if (!v) return;
-    const n = Number(v.replace(',', '.'));
-    if (!Number.isFinite(n) || n <= 0) return;
-    const prev = rate;
-    setRate(n);
-    try { await setUsdPln(n); } catch { setRate(prev); }
-  }
-
-  return (
-    <section className="surface flex items-center gap-3 p-4">
-      <div className="flex-1">
-        <p className="label-cap">Стейблкоин к злотому</p>
-        <p className="tnum mt-0.5 text-sm font-semibold">
-          {rate === null ? '—' : `1 $ = ${rate} zł`}
-        </p>
-      </div>
-      <Button onPress={change}
-        className="rounded-full border px-3.5 py-2 text-xs font-medium"
-        style={{ borderColor: 'var(--bd)', color: 'var(--color-ac)' }}>
-        Изменить
-      </Button>
-    </section>
-  );
-}
-
 export function Analytics({ items, currency, rates, month }: Props) {
   const current = filterMonth(items, month);
 
@@ -76,7 +43,7 @@ export function Analytics({ items, currency, rates, month }: Props) {
       <div className="space-y-4 px-5 pt-5 pb-28">
         <EmptyState icon={ChartPie} title="Нет данных за период"
                     hint="Запишите первую трату" />
-        <StablecoinRate />
+        <RatesCard />
       </div>
     );
   }
@@ -176,7 +143,7 @@ export function Analytics({ items, currency, rates, month }: Props) {
           })}
         </ul>
       </section>
-      <StablecoinRate />
+      <RatesCard />
     </div>
   );
 }

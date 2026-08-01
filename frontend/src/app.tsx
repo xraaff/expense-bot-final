@@ -8,6 +8,7 @@ import { Operations } from './screens/Operations';
 import { AddExpenseSheet } from './sheets/AddExpenseSheet';
 import { Skeleton } from './components/Skeleton';
 import { Toast } from './components/Toast';
+import { PromptDialog } from './components/PromptDialog';
 import { useExpenses } from './lib/useExpenses';
 import { authenticate, fetchMeta, fetchRates, updateMeta } from './lib/api';
 import { initTheme } from './lib/theme';
@@ -49,6 +50,9 @@ export default function App() {
   const [customCats, setCustomCats] = useState<string[]>([]);
   const [customSrcs, setCustomSrcs] = useState<string[]>([]);
   const [tab, setTab] = useState('overview');
+  const [ask, setAsk] = useState<
+    { title: string; value: string; run: (v: string) => void } | null
+  >(null);
 
   const range = useMemo(() => rangeLastMonths(3), []);
   const { items, loading, error, add, update, remove, reload } = useExpenses(range);
@@ -69,16 +73,27 @@ export default function App() {
     });
   }, [role]);
 
-  async function editSource(name: string | null, mode: 'add' | 'rename' | 'delete'): Promise<void> {
+  function askSource(name: string | null, mode: 'add' | 'rename' | 'delete'): void {
+    if (mode === 'add') {
+      setAsk({ title: 'Новый источник', value: '', run: (v) => { void editSource(null, 'add', v); } });
+    } else if (mode === 'rename') {
+      setAsk({ title: 'Переименовать источник', value: name!,
+               run: (v) => { void editSource(name, 'rename', v); } });
+    } else {
+      void editSource(name, 'delete');
+    }
+  }
+
+  async function editSource(name: string | null, mode: 'add' | 'rename' | 'delete', value?: string): Promise<void> {
     let next: string[] = customSrcs;
     let payload: Parameters<typeof updateMeta>[0];
     if (mode === 'add') {
-      const v = window.prompt('Название нового источника')?.trim();
+      const v = value!;
       if (!v || sources.includes(v)) return;
       next = [...customSrcs, v];
       payload = { action: 'add', target: 'sources', item: v };
     } else if (mode === 'rename') {
-      const v = window.prompt('Новое имя источника', name!)?.trim();
+      const v = value!;
       if (!v) return;
       next = customSrcs.map((c) => (c === name ? v : c));
       payload = { action: 'rename', target: 'sources', old_name: name!, new_name: v };
@@ -97,8 +112,11 @@ export default function App() {
     }
   }
 
-  async function addCategory(): Promise<void> {
-    const name = window.prompt('Название новой категории')?.trim();
+  function addCategory(): void {
+    setAsk({ title: 'Новая категория', value: '', run: (name) => { void applyAddCategory(name); } });
+  }
+
+  async function applyAddCategory(name: string): Promise<void> {
     if (!name || categories.includes(name)) return;
     const optimistic = [...customCats, name];
     setCustomCats(optimistic);
@@ -111,9 +129,17 @@ export default function App() {
     }
   }
 
-  async function editCategory(name: string, rename: boolean): Promise<void> {
-    const next = rename ? window.prompt('Новое имя категории', name)?.trim() : null;
-    if (rename && !next) return;
+  function editCategory(name: string, rename: boolean): void {
+    if (rename) {
+      setAsk({ title: 'Переименовать категорию', value: name,
+               run: (v) => { void applyEditCategory(name, v); } });
+    } else {
+      void applyEditCategory(name, null);
+    }
+  }
+
+  async function applyEditCategory(name: string, next: string | null): Promise<void> {
+    const rename = next !== null;
     const optimistic = rename
       ? customCats.map((c) => (c === name ? next! : c))
       : customCats.filter((c) => c !== name);
@@ -212,6 +238,14 @@ export default function App() {
         </div>
       </Tabs>
 
+      <PromptDialog
+        isOpen={ask !== null}
+        title={ask?.title ?? ''}
+        defaultValue={ask?.value ?? ''}
+        onClose={() => setAsk(null)}
+        onSubmit={(v) => ask?.run(v)}
+      />
+
       <Toast message={dismissed ? null : error}
              onRetry={() => { setDismissed(true); void reload(); }}
              onDismiss={() => setDismissed(true)} />
@@ -230,13 +264,13 @@ export default function App() {
         }}
         onDelete={editing ? (id) => remove(id) : undefined}
         customCategories={customCats}
-        onAddCategory={() => { void addCategory(); }}
-        onRenameCategory={(n) => { void editCategory(n, true); }}
-        onDeleteCategory={(n) => { void editCategory(n, false); }}
+        onAddCategory={() => addCategory()}
+        onRenameCategory={(n) => editCategory(n, true)}
+        onDeleteCategory={(n) => editCategory(n, false)}
         customSources={customSrcs}
-        onAddSource={() => { void editSource(null, 'add'); }}
-        onRenameSource={(n) => { void editSource(n, 'rename'); }}
-        onDeleteSource={(n) => { void editSource(n, 'delete'); }}
+        onAddSource={() => askSource(null, 'add')}
+        onRenameSource={(n) => askSource(n, 'rename')}
+        onDeleteSource={(n) => askSource(n, 'delete')}
       />
     </div>
   );

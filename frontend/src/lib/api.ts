@@ -85,3 +85,18 @@ export async function setUsdPln(value: number): Promise<void> {
   const j = await postJson<{ ok: boolean; error?: string }>('/api/settings', { usd_pln: value });
   if (!j.ok) throw new Error(j.error ?? 'Не удалось сохранить курс');
 }
+
+export interface RatesFull {
+  quotes: { UAH_per_USD: number; UAH_per_PLN: number; USD_per_PLN: number };
+  sources: { USD: string; PLN: string };
+}
+
+export async function fetchRatesFull(): Promise<RatesFull | null> {
+  try {
+    const r = await fetch(`/api/rates?base=UAH&t=${Date.now()}`);
+    const j = (await r.json()) as Partial<RatesFull> & { ok?: boolean };
+    return j.quotes && j.sources ? { quotes: j.quotes, sources: j.sources } : null;
+  } catch {
+    return null;
+  }
+}
