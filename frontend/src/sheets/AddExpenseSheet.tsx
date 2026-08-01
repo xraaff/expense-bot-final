@@ -7,7 +7,7 @@ import {
 import { CalendarDate, getLocalTimeZone, today as todayIn } from '@internationalized/date';
 import { CategoryTile } from '../components/CategoryTile';
 import { CategoryMenu } from '../components/CategoryMenu';
-import { Plus, CalendarBlank } from '@phosphor-icons/react';
+import { Plus, CalendarBlank, PencilSimple } from '@phosphor-icons/react';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
 
@@ -27,6 +27,10 @@ interface Props {
   onAddCategory?: () => void;
   onRenameCategory?: (name: string) => void;
   onDeleteCategory?: (name: string) => void;
+  customSources?: string[];
+  onAddSource?: () => void;
+  onRenameSource?: (name: string) => void;
+  onDeleteSource?: (name: string) => void;
 }
 
 function formatRu(d: CalendarDate): string {
@@ -49,11 +53,12 @@ export function AddExpenseSheet(props: Props) {
   const [category, setCategory] = useState(initial?.category ?? '');
   const [source, setSource] = useState(initial?.source ?? sources[0] ?? 'Общий');
   const [description, setDescription] = useState(initial?.description ?? '');
-  const [payer, setPayer] = useState(initial?.payer ?? role);
   const [date, setDate] = useState<CalendarDate>(
     initial ? parseISO(initial.date) : todayIn(getLocalTimeZone())
   );
   const [busy, setBusy] = useState(false);
+  const [editCats, setEditCats] = useState(false);
+  const [editSrcs, setEditSrcs] = useState(false);
 
   const numeric = Number(amount.replace(',', '.'));
   const valid = Number.isFinite(numeric) && numeric > 0 && category !== '';
@@ -65,7 +70,7 @@ export function AddExpenseSheet(props: Props) {
       await props.onSubmit({
         id: initial?.id,
         date: date.toString(), amount: numeric, currency, category,
-        description, payer, source, user_id: userId,
+        description, payer: '', source, user_id: userId,
       });
       onOpenChange(false);
     } finally {
@@ -178,19 +183,31 @@ export function AddExpenseSheet(props: Props) {
                                 onSelect={() => setCategory(c)} />
                 ))}
                 {props.onAddCategory && (
-                  <Button aria-label="Новая категория" onPress={props.onAddCategory}
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed px-2 py-3 text-xs font-medium"
-                    style={{ borderColor: 'var(--bd)', color: 'var(--tx2)' }}>
-                    <Plus size={22} weight="bold" />
-                    Новая
+                  <Button aria-label="Редактировать категории"
+                    onPress={() => setEditCats((v) => !v)}
+                    className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed px-2 py-3 text-[11px] font-medium leading-tight"
+                    style={{
+                      borderColor: editCats ? 'var(--color-ac)' : 'var(--bd)',
+                      color: editCats ? 'var(--color-ac)' : 'var(--tx2)',
+                    }}>
+                    <PencilSimple size={20} weight="bold" />
+                    Редактировать
                   </Button>
                 )}
               </div>
-              {props.customCategories && props.customCategories.length > 0 &&
-               props.onRenameCategory && props.onDeleteCategory && (
+              {editCats && props.onRenameCategory && props.onDeleteCategory && (
                 <div className="flex flex-wrap items-center gap-1 pt-1">
-                  <span className="text-[10px]" style={{ color: 'var(--tx3)' }}>Свои:</span>
-                  {props.customCategories.map((c) => (
+                  <Button onPress={props.onAddCategory}
+                    className="rounded-full border px-3 py-1.5 text-xs font-medium"
+                    style={{ borderColor: 'var(--color-ac)', color: 'var(--color-ac)' }}>
+                    + Добавить
+                  </Button>
+                  {(props.customCategories ?? []).length === 0 && (
+                    <span className="text-[11px]" style={{ color: 'var(--tx3)' }}>
+                      свои категории появятся здесь
+                    </span>
+                  )}
+                  {(props.customCategories ?? []).map((c) => (
                     <span key={c} className="flex items-center gap-0.5 text-xs"
                           style={{ color: 'var(--tx2)' }}>
                       {c}
@@ -222,7 +239,42 @@ export function AddExpenseSheet(props: Props) {
                     </Button>
                   );
                 })}
+                {props.onAddSource && (
+                  <Button aria-label="Редактировать источники"
+                    onPress={() => setEditSrcs((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium"
+                    style={{
+                      borderColor: editSrcs ? 'var(--color-ac)' : 'var(--bd)',
+                      color: editSrcs ? 'var(--color-ac)' : 'var(--tx2)',
+                    }}>
+                    <PencilSimple size={14} weight="bold" />
+                    Редактировать
+                  </Button>
+                )}
               </div>
+              {editSrcs && props.onRenameSource && props.onDeleteSource && (
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <Button onPress={props.onAddSource}
+                    className="rounded-full border px-3 py-1.5 text-xs font-medium"
+                    style={{ borderColor: 'var(--color-ac)', color: 'var(--color-ac)' }}>
+                    + Добавить
+                  </Button>
+                  {(props.customSources ?? []).length === 0 && (
+                    <span className="text-[11px]" style={{ color: 'var(--tx3)' }}>
+                      свои источники появятся здесь
+                    </span>
+                  )}
+                  {(props.customSources ?? []).map((c) => (
+                    <span key={c} className="flex items-center gap-0.5 text-xs"
+                          style={{ color: 'var(--tx2)' }}>
+                      {c}
+                      <CategoryMenu name={c}
+                                    onRename={props.onRenameSource!}
+                                    onDelete={props.onDeleteSource!} />
+                    </span>
+                  ))}
+                </div>
+              )}
             </section>
 
             <TextField value={description} onChange={setDescription} className="space-y-2">
@@ -233,24 +285,7 @@ export function AddExpenseSheet(props: Props) {
                 style={{ borderColor: 'var(--bd)', background: 'var(--s1)', color: 'var(--tx)' }} />
             </TextField>
 
-            <ToggleButtonGroup
-              selectionMode="single"
-              selectedKeys={[payer]}
-              onSelectionChange={(k) => {
-                const v = [...k][0] as string | undefined;
-                if (v) setPayer(v);
-              }}
-              className="flex gap-2"
-            >
-              {['Vova', 'Karina'].map((p) => (
-                <ToggleButton key={p} id={p}
-                  className="flex-1 rounded-xl border py-2 text-sm font-medium
-                             selected:border-[var(--color-ac)] selected:text-[var(--color-ac)]"
-                  style={{ borderColor: 'var(--bd)' }}>
-                  {p}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
+
 
             <Button isDisabled={!valid || busy} onPress={submit}
               className="w-full rounded-2xl py-4 text-base font-semibold text-black

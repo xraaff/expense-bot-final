@@ -47,6 +47,7 @@ export default function App() {
   const [editing, setEditing] = useState<Expense | undefined>(undefined);
   const [dismissed, setDismissed] = useState(false);
   const [customCats, setCustomCats] = useState<string[]>([]);
+  const [customSrcs, setCustomSrcs] = useState<string[]>([]);
   const [tab, setTab] = useState('overview');
 
   const range = useMemo(() => rangeLastMonths(3), []);
@@ -64,9 +65,37 @@ export default function App() {
         setCustomCats(custom);
         setCategories([...DEFAULT_CATEGORIES, ...custom]);
       }
-      if (m.sources.length) setSources([...DEFAULT_SOURCES, ...m.sources]);
+      if (m.sources.length) { setCustomSrcs(m.sources); setSources([...DEFAULT_SOURCES, ...m.sources]); }
     });
   }, [role]);
+
+  async function editSource(name: string | null, mode: 'add' | 'rename' | 'delete'): Promise<void> {
+    let next: string[] = customSrcs;
+    let payload: Parameters<typeof updateMeta>[0];
+    if (mode === 'add') {
+      const v = window.prompt('Название нового источника')?.trim();
+      if (!v || sources.includes(v)) return;
+      next = [...customSrcs, v];
+      payload = { action: 'add', target: 'sources', item: v };
+    } else if (mode === 'rename') {
+      const v = window.prompt('Новое имя источника', name!)?.trim();
+      if (!v) return;
+      next = customSrcs.map((c) => (c === name ? v : c));
+      payload = { action: 'rename', target: 'sources', old_name: name!, new_name: v };
+    } else {
+      next = customSrcs.filter((c) => c !== name);
+      payload = { action: 'delete', target: 'sources', name: name! };
+    }
+    const prev = customSrcs;
+    setCustomSrcs(next);
+    setSources([...DEFAULT_SOURCES, ...next]);
+    try {
+      await updateMeta(payload);
+    } catch {
+      setCustomSrcs(prev);
+      setSources([...DEFAULT_SOURCES, ...prev]);
+    }
+  }
 
   async function addCategory(): Promise<void> {
     const name = window.prompt('Название новой категории')?.trim();
@@ -204,6 +233,10 @@ export default function App() {
         onAddCategory={() => { void addCategory(); }}
         onRenameCategory={(n) => { void editCategory(n, true); }}
         onDeleteCategory={(n) => { void editCategory(n, false); }}
+        customSources={customSrcs}
+        onAddSource={() => { void editSource(null, 'add'); }}
+        onRenameSource={(n) => { void editSource(n, 'rename'); }}
+        onDeleteSource={(n) => { void editSource(n, 'delete'); }}
       />
     </div>
   );

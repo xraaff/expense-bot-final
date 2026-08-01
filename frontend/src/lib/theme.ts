@@ -8,9 +8,8 @@ export function applyTheme(mode: ThemeMode): void {
 }
 
 export function initTheme(): ThemeMode {
-  const saved = localStorage.getItem(KEY) as ThemeMode | null;
-  const tg = (window as any).Telegram?.WebApp;
-  const mode: ThemeMode = saved ?? (tg?.colorScheme === 'dark' ? 'dark' : 'light');
-  applyTheme(mode);
-  return mode;
+  // Приложение оформлено под фирменный знак на белом. Тёмную схему Telegram
+  // намеренно игнорируем — иначе на телефоне получается каша.
+  applyTheme('light');
+  return 'light';
 }

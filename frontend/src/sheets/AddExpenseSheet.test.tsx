@@ -32,7 +32,7 @@ describe('AddExpenseSheet', () => {
     expect(payload.amount).toBe(250);
     expect(payload.category).toBe('Кафе');
     expect(payload.currency).toBe('UAH');
-    expect(payload.payer).toBe('Vova');
+    expect(payload.payer).toBe(''); // персонализация по человеку убрана
     expect(payload.user_id).toBe('821378781');
   });
 
