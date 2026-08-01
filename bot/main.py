@@ -316,15 +316,23 @@ async def _pumb_uah_per_pln():
     idx = html.find("PLN")
     if idx == -1:
         return None
-    window = html[idx:idx + 1200]
+    # Строка банка на Минфине идёт как: PLN <покупка> ... <продажа>.
+    # Для трат нужен курс ПРОДАЖИ — по нему банк продаёт злотый владельцу
+    # гривневой карты, и именно он списывается в магазине.
+    window = _re.sub(r"<[^>]+>", " ", html[idx:idx + 1200])
+    found = []
     for m in _re.finditer(r"(\d{1,2}[.,]\d{2,4})", window):
         try:
             v = float(m.group(1).replace(",", "."))
         except ValueError:
             continue
         if 8.0 <= v <= 20.0:  # разумный коридор для злотого к гривне
-            return v
-    return None
+            found.append(v)
+        if len(found) == 2:
+            break
+    if not found:
+        return None
+    return max(found)  # продажа всегда выше покупки
 
 
 async def _pumb_legacy_unused():
