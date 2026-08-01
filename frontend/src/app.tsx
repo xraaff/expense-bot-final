@@ -24,6 +24,7 @@ const DEFAULT_CATEGORIES = [
   'Подписки', 'Развлечения', 'Бизнес', 'Образование', 'Красота',
 ];
 const DEFAULT_SOURCES = ['Общий', 'Карта Vova', 'Карта Karina', 'Наличные'];
+const DISPLAY_CURRENCIES: Currency[] = ['UAH', 'USD', 'PLN', 'EUR'];
 
 function rangeLastMonths(count: number): { from: string; to: string } {
   const now = new Date();
@@ -40,7 +41,9 @@ export default function App() {
   const [role, setRole] = useState<string | null>(() => localStorage.getItem('role'));
   const [key, setKey] = useState('');
   const [authError, setAuthError] = useState('');
-  const [currency] = useState<Currency>('UAH');
+  const [currency, setCurrency] = useState<Currency>(
+    () => (localStorage.getItem('displayCurrency') as Currency) || 'UAH'
+  );
   const [rates, setRates] = useState<Rates>({});
   const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
   const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES);
@@ -59,6 +62,18 @@ export default function App() {
 
   useEffect(() => { initTheme(); }, []);
   useEffect(() => { setDismissed(false); }, [error]);
+
+  // Данные меняются с другого устройства — перечитываем, когда приложение
+  // снова становится видимым, иначе телефон и ноутбук расходятся.
+  useEffect(() => {
+    const sync = (): void => { if (!document.hidden) void reload(); };
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, [reload]);
 
   useEffect(() => {
     if (!role) return;
@@ -194,6 +209,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
+      <div className="flex justify-end px-5 pt-3">
+        <div className="flex gap-1 rounded-full border p-0.5"
+             style={{ borderColor: 'var(--bd)', background: 'var(--s1)' }}>
+          {DISPLAY_CURRENCIES.map((c) => {
+            const on = currency === c;
+            return (
+              <Button key={c} aria-label={`Показывать в ${c}`}
+                onPress={() => { setCurrency(c); localStorage.setItem('displayCurrency', c); }}
+                className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                style={{ background: on ? 'var(--ink)' : 'transparent',
+                         color: on ? '#fff' : 'var(--tx2)' }}>
+                {c}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
       <Tabs selectedKey={tab} onSelectionChange={(k) => setTab(String(k))}>
         <TabPanel id="overview">
           {loading ? <Skeleton className="m-5 h-40" /> : (

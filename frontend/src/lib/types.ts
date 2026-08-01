@@ -1,4 +1,4 @@
-export type Currency = 'UAH' | 'USD' | 'PLN';
+export type Currency = 'UAH' | 'USD' | 'PLN' | 'EUR';
 export type Rates = Record<string, number>;
 
 export interface Expense {

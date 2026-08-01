@@ -2,18 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from 'react-aria-components';
 import { ArrowsClockwise } from '@phosphor-icons/react';
 import { PromptDialog } from './PromptDialog';
-import { fetchRatesFull, setUsdPln } from '../lib/api';
+import { fetchRatesFull, setUsdPln, setUsdEur } from '../lib/api';
 
 const SOURCE_LABEL: Record<string, string> = {
   binance_p2p: 'Binance P2P · ПУМБ · от 800 ₴',
-  pumb: 'ПУМБ через Минфин',
+  pumb: 'ПУМБ через Минфин · курс продажи',
   derived_from_usd: 'выведен из доллара',
   fallback: 'запасное значение',
 };
 
+type Ask = 'pln' | 'eur' | null;
+
 export function RatesCard() {
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchRatesFull>>>(null);
-  const [asking, setAsking] = useState(false);
+  const [ask, setAsk] = useState<Ask>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -26,6 +28,12 @@ export function RatesCard() {
 
   const q = data?.quotes;
   const src = data?.sources;
+
+  function save(value: string, kind: Exclude<Ask, null>): void {
+    const n = Number(value.replace(',', '.'));
+    if (!Number.isFinite(n) || n <= 0) return;
+    void (kind === 'pln' ? setUsdPln(n) : setUsdEur(n)).then(load);
+  }
 
   return (
     <section className="surface p-4">
@@ -52,6 +60,7 @@ export function RatesCard() {
               {SOURCE_LABEL[src?.USD ?? ''] ?? src?.USD}
             </p>
           </li>
+
           <li>
             <div className="flex items-baseline justify-between">
               <span className="text-sm">1 злотый</span>
@@ -61,15 +70,39 @@ export function RatesCard() {
               {SOURCE_LABEL[src?.PLN ?? ''] ?? src?.PLN}
             </p>
           </li>
+
+          <li>
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm">1 евро</span>
+              <span className="tnum text-sm font-semibold">{q.UAH_per_EUR} ₴</span>
+            </div>
+            <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>выведен из доллара</p>
+          </li>
+
           <li className="flex items-center justify-between border-t pt-3"
               style={{ borderColor: 'var(--bd)' }}>
             <div>
-              <div className="text-sm">1 доллар в злотых</div>
+              <div className="text-sm">1 usdt в злотых</div>
               <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>задаётся вручную</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="tnum text-sm font-semibold">{q.USD_per_PLN} zł</span>
-              <Button onPress={() => setAsking(true)}
+              <Button onPress={() => setAsk('pln')}
+                className="rounded-full border px-3 py-1.5 text-xs font-medium"
+                style={{ borderColor: 'var(--bd)', color: 'var(--color-ac)' }}>
+                Изменить
+              </Button>
+            </div>
+          </li>
+
+          <li className="flex items-center justify-between">
+            <div>
+              <div className="text-sm">1 usdt в евро</div>
+              <p className="text-[11px]" style={{ color: 'var(--tx3)' }}>задаётся вручную</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="tnum text-sm font-semibold">{q.USD_per_EUR} €</span>
+              <Button onPress={() => setAsk('eur')}
                 className="rounded-full border px-3 py-1.5 text-xs font-medium"
                 style={{ borderColor: 'var(--bd)', color: 'var(--color-ac)' }}>
                 Изменить
@@ -80,16 +113,16 @@ export function RatesCard() {
       )}
 
       <PromptDialog
-        isOpen={asking}
-        title="Курс стейблкоина к злотому"
-        label="Сколько злотых за 1 доллар"
-        defaultValue={q ? String(q.USD_per_PLN) : '3.840'}
-        onClose={() => setAsking(false)}
-        onSubmit={(v) => {
-          const n = Number(v.replace(',', '.'));
-          if (!Number.isFinite(n) || n <= 0) return;
-          void setUsdPln(n).then(load);
-        }}
+        isOpen={ask !== null}
+        title={ask === 'eur' ? 'Курс стейблкоина к евро' : 'Курс стейблкоина к злотому'}
+        label={ask === 'eur' ? 'Сколько евро за 1 доллар' : 'Сколько злотых за 1 доллар'}
+        defaultValue={
+          ask === 'eur'
+            ? String(q?.USD_per_EUR ?? '0.84')
+            : String(q?.USD_per_PLN ?? '3.840')
+        }
+        onClose={() => setAsk(null)}
+        onSubmit={(v) => { if (ask) save(v, ask); }}
       />
     </section>
   );

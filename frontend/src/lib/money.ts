@@ -1,6 +1,6 @@
 import type { Currency, Rates } from './types';
 
-export const SYMBOLS: Record<Currency, string> = { UAH: '₴', USD: '$', PLN: 'zł' };
+export const SYMBOLS: Record<Currency, string> = { UAH: '₴', USD: '$', PLN: 'zł', EUR: '€' };
 
 export function formatMoney(
   value: number,

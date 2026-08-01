@@ -144,7 +144,7 @@ def sheets_add(data):
             data.get("user_id", ""),
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         ]
-        ws.append_row(row, value_input_option="USER_ENTERED")
+        ws.append_row(row, value_input_option="RAW")
         log.info("RAW append OK: id=%s amount=%s", data.get("id"), data.get("amount"))
         return {"ok": True}
     except gspread.exceptions.APIError as e:
@@ -162,7 +162,7 @@ def sheets_add(data):
                 data.get("user_id", ""),
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             ]
-            ws.append_row(row, value_input_option="USER_ENTERED")
+            ws.append_row(row, value_input_option="RAW")
             log.info("RAW append OK (re-auth): id=%s", data.get("id"))
             return {"ok": True}
         raise
@@ -190,7 +190,7 @@ def sheets_update(data):
             data.get("payer", ws.cell(r, 7).value or ""),
             data.get("source", ws.cell(r, 8).value or ""),
         ]
-        ws.update(f"B{r}:H{r}", [vals], value_input_option="USER_ENTERED")
+        ws.update(f"B{r}:H{r}", [vals], value_input_option="RAW")
         log.info("RAW update OK: row=%d id=%s", r, eid)
         return {"ok": True}
     except Exception:
@@ -262,20 +262,29 @@ def meta_get_sources():
 _rates_cache = {"data": None, "ts": 0}
 
 USD_PLN_DEFAULT = 3.840  # злотых за доллар по умолчанию; правится из интерфейса
-BINANCE_MIN_UAH = "800"  # минимальная сумма сделки — отсекает мусорные объявления
+USD_EUR_DEFAULT = 0.84   # евро за доллар по умолчанию; правится из интерфейса
 
 
-def get_usd_pln():
-    """Курс злотого к доллару: значение из META, иначе значение по умолчанию."""
+def _meta_rate(key, default):
     try:
-        raw = meta_get("usd_pln_rate")
+        raw = meta_get(key)
         if raw:
             v = float(str(raw).replace(",", "."))
             if v > 0:
                 return v
     except Exception:
         pass
-    return USD_PLN_DEFAULT
+    return default
+
+
+def get_usd_eur():
+    return _meta_rate("usd_eur_rate", USD_EUR_DEFAULT)
+BINANCE_MIN_UAH = "800"  # минимальная сумма сделки — отсекает мусорные объявления
+
+
+def get_usd_pln():
+    """Курс злотого к доллару: значение из META, иначе значение по умолчанию."""
+    return _meta_rate("usd_pln_rate", USD_PLN_DEFAULT)
 
 async def _binance_p2p_uah_per_usdt():
     """Средняя цена продажи USDT за гривну по верхним объявлениям Binance P2P."""
@@ -395,6 +404,7 @@ async def fetch_rates(base="UAH"):
         source_usd = "binance_p2p"
 
     usd_pln = get_usd_pln()
+    usd_eur = get_usd_eur()
     if uah_per_pln is None:
         uah_per_pln = uah_per_usd / usd_pln
         source_pln = "derived_from_usd"
@@ -405,10 +415,14 @@ async def fetch_rates(base="UAH"):
     result = {
         "ok": True,
         "base": "UAH",
-        "rates": {"USD": 1.0 / uah_per_usd, "PLN": 1.0 / uah_per_pln},
+        "rates": {"USD": 1.0 / uah_per_usd,
+                  "PLN": 1.0 / uah_per_pln,
+                  "EUR": 1.0 / (uah_per_usd / usd_eur)},
         "quotes": {"UAH_per_USD": round(uah_per_usd, 4),
                    "UAH_per_PLN": round(uah_per_pln, 4),
-                   "USD_per_PLN": usd_pln},
+                   "USD_per_PLN": usd_pln,
+                   "USD_per_EUR": usd_eur,
+                   "UAH_per_EUR": round(uah_per_usd / usd_eur, 4)},
         "sources": {"USD": source_usd, "PLN": source_pln},
         "ts": now,
     }
@@ -739,21 +753,31 @@ async def api_meta_update(request):
         return web.json_response({"ok": False, "error": str(e)}, status=500)
 
 async def api_settings_get(request):
-    return web.json_response({"ok": True, "usd_pln": get_usd_pln(),
-                              "default": USD_PLN_DEFAULT})
+    return web.json_response({"ok": True,
+                              "usd_pln": get_usd_pln(), "usd_eur": get_usd_eur(),
+                              "defaults": {"usd_pln": USD_PLN_DEFAULT,
+                                           "usd_eur": USD_EUR_DEFAULT}})
 
 
 async def api_settings_set(request):
     try:
         data = await request.json()
-        v = float(str(data.get("usd_pln", "")).replace(",", "."))
-        if not (0.1 <= v <= 100):
-            return web.json_response({"ok": False, "error": "курс вне разумных границ"},
-                                     status=400)
-        meta_set("usd_pln_rate", str(v))
+        written = {}
+        for field, key in (("usd_pln", "usd_pln_rate"), ("usd_eur", "usd_eur_rate")):
+            if field not in data:
+                continue
+            v = float(str(data[field]).replace(",", "."))
+            if not (0.01 <= v <= 100):
+                return web.json_response({"ok": False, "error": "курс вне разумных границ"},
+                                         status=400)
+            meta_set(key, str(v))
+            written[field] = v
+        if not written:
+            return web.json_response({"ok": False, "error": "нечего сохранять"}, status=400)
+        v = written.get("usd_pln", get_usd_pln())
         _rates_cache["dirty"] = True  # пересчитать курсы при следующем запросе
         log.info("USD/PLN set to %s", v)
-        return web.json_response({"ok": True, "usd_pln": v})
+        return web.json_response({"ok": True, **written})
     except Exception as e:
         log.error("api_settings_set:\n%s", traceback.format_exc())
         return web.json_response({"ok": False, "error": str(e)}, status=500)

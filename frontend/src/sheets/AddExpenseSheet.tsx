@@ -11,7 +11,7 @@ import { Plus, CalendarBlank, PencilSimple } from '@phosphor-icons/react';
 import { sourceIcon } from '../lib/icons';
 import type { Currency, Expense, ExpenseInput } from '../lib/types';
 
-const CURRENCIES: Currency[] = ['UAH', 'USD', 'PLN'];
+const CURRENCIES: Currency[] = ['UAH', 'USD', 'PLN', 'EUR'];
 
 interface Props {
   isOpen: boolean;
@@ -113,7 +113,7 @@ export function AddExpenseSheet(props: Props) {
             >
               {CURRENCIES.map((c) => (
                 <ToggleButton key={c} id={c}
-                  className="flex-1 rounded-xl border py-2 text-sm font-medium
+                  className="flex-1 rounded-lg border py-1.5 text-xs font-semibold
                              selected:border-[var(--color-ac)] selected:text-[var(--color-ac)]"
                   style={{ borderColor: 'var(--bd)' }}>
                   {c}

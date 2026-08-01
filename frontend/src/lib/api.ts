@@ -87,7 +87,8 @@ export async function setUsdPln(value: number): Promise<void> {
 }
 
 export interface RatesFull {
-  quotes: { UAH_per_USD: number; UAH_per_PLN: number; USD_per_PLN: number };
+  quotes: { UAH_per_USD: number; UAH_per_PLN: number; UAH_per_EUR: number;
+            USD_per_PLN: number; USD_per_EUR: number };
   sources: { USD: string; PLN: string };
 }
 
@@ -99,4 +100,9 @@ export async function fetchRatesFull(): Promise<RatesFull | null> {
   } catch {
     return null;
   }
+}
+
+export async function setUsdEur(value: number): Promise<void> {
+  const j = await postJson<{ ok: boolean; error?: string }>('/api/settings', { usd_eur: value });
+  if (!j.ok) throw new Error(j.error ?? 'Не удалось сохранить курс');
 }
