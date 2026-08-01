@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Analytics, donutPadding } from './Analytics';
+import { Analytics } from './Analytics';
 import type { Expense } from '../lib/types';
 import { CalendarDate } from '@internationalized/date';
 
@@ -21,10 +21,17 @@ describe('Analytics', () => {
     expect(screen.getByText('Продукты')).toBeInTheDocument();
   });
 
-  it('на единственной категории зазор между секторами не запрашивается', () => {
-    // с ненулевым зазором сектор в 360° вырождался и бублик исчезал совсем
-    expect(donutPadding(1)).toBe(0);
-    expect(donutPadding(2)).toBeGreaterThan(0);
+  it('на единственной категории рисует замкнутое кольцо', () => {
+    // recharts на секторе в 360° выдавал обрубок, а с зазором — пустоту
+    render(<Analytics items={[mk({ amount: 200 })]} currency="UAH" rates={{}}
+                      period={PERIOD} onPeriodChange={noop} />);
+    expect(screen.getByTestId('donut-full')).toBeInTheDocument();
+  });
+
+  it('на нескольких категориях кольцо на 100% не рисуется', () => {
+    render(<Analytics items={[mk({ amount: 200 }), mk({ id: 'b', amount: 300, category: 'Кафе' })]}
+                      currency="UAH" rates={{}} period={PERIOD} onPeriodChange={noop} />);
+    expect(screen.queryByTestId('donut-full')).toBeNull();
   });
 
   it('на пустых данных показывает пустое состояние', () => {

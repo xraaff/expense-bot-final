@@ -32,10 +32,19 @@ interface Props {
   onPeriodChange: (p: Period) => void;
 }
 
-/** Зазор нужен только между секторами. Единственная категория — это сектор
- *  в 360°, и с ненулевым зазором recharts вырождает его: бублик пропадал. */
-export function donutPadding(categories: number): number {
-  return categories > 1 ? 2 : 0;
+/** Кольцо на все 100 %.
+ *
+ *  recharts не умеет замкнуть сектор в 360°: на единственной категории он
+ *  рисовал обрубок, а с зазором между секторами — вообще ничего. Один круг
+ *  проще начертить самим, чем уговаривать библиотеку.
+ */
+function FullRing({ color, label }: { color: string; label: string }) {
+  return (
+    <svg viewBox="0 0 200 200" className="mx-auto h-full" role="img" aria-label={label}
+         data-testid="donut-full">
+      <circle cx="100" cy="100" r="73" fill="none" stroke={color} strokeWidth="30" />
+    </svg>
+  );
 }
 
 /** Предыдущее окно той же длины — честное сравнение для любого периода. */
@@ -106,17 +115,20 @@ export function Analytics({ items, currency, rates, period, onPeriodChange }: Pr
         <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.15em]"
            style={{ color: 'var(--tx2)' }}>Структура трат</p>
         <div style={{ height: 200 }}>
+          {cats.length === 1 ? (
+            <FullRing color={categoryColor(0)} label={`${cats[0].category} — 100%`} />
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={cats} dataKey="total" nameKey="category"
-                   innerRadius={58} outerRadius={88}
-                   paddingAngle={donutPadding(cats.length)} stroke="none">
+                   innerRadius={58} outerRadius={88} paddingAngle={2} stroke="none">
                 {cats.map((_, i) => (
                   <Cell key={i} fill={categoryColor(i)} />
                 ))}
               </Pie>
             </PieChart>
           </ResponsiveContainer>
+          )}
         </div>
         <ul className="mt-3 space-y-2">
           {cats.map((c, i) => (
