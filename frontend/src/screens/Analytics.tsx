@@ -32,6 +32,12 @@ interface Props {
   onPeriodChange: (p: Period) => void;
 }
 
+/** Зазор нужен только между секторами. Единственная категория — это сектор
+ *  в 360°, и с ненулевым зазором recharts вырождает его: бублик пропадал. */
+export function donutPadding(categories: number): number {
+  return categories > 1 ? 2 : 0;
+}
+
 /** Предыдущее окно той же длины — честное сравнение для любого периода. */
 function shiftBack(p: Period): { from: string; to: string } {
   const days = p.end.compare(p.start);
@@ -103,7 +109,8 @@ export function Analytics({ items, currency, rates, period, onPeriodChange }: Pr
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={cats} dataKey="total" nameKey="category"
-                   innerRadius={58} outerRadius={88} paddingAngle={2} stroke="none">
+                   innerRadius={58} outerRadius={88}
+                   paddingAngle={donutPadding(cats.length)} stroke="none">
                 {cats.map((_, i) => (
                   <Cell key={i} fill={categoryColor(i)} />
                 ))}

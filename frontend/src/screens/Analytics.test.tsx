@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Analytics } from './Analytics';
+import { Analytics, donutPadding } from './Analytics';
 import type { Expense } from '../lib/types';
 import { CalendarDate } from '@internationalized/date';
 
@@ -19,6 +19,12 @@ describe('Analytics', () => {
                       currency="UAH" rates={{}} period={PERIOD} onPeriodChange={noop} />);
     expect(screen.getByText('Кафе')).toBeInTheDocument();
     expect(screen.getByText('Продукты')).toBeInTheDocument();
+  });
+
+  it('на единственной категории зазор между секторами не запрашивается', () => {
+    // с ненулевым зазором сектор в 360° вырождался и бублик исчезал совсем
+    expect(donutPadding(1)).toBe(0);
+    expect(donutPadding(2)).toBeGreaterThan(0);
   });
 
   it('на пустых данных показывает пустое состояние', () => {
