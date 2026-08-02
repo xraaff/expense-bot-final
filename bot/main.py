@@ -20,6 +20,7 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 # WEBAPP_URL: на Render можно не задавать — берём автоматически из RENDER_EXTERNAL_URL
 WEBAPP_URL = (os.environ.get("WEBAPP_URL") or os.environ.get("RENDER_EXTERNAL_URL") or "").rstrip("/")
 PORT = int(os.environ.get("PORT", 8080))
+OWNER_TG_ID = os.environ.get("OWNER_TG_ID", "821378781")
 AUTH_KEY_VOVA = os.environ.get("AUTH_KEY_VOVA", "")
 AUTH_KEY_KARINA = os.environ.get("AUTH_KEY_KARINA", "")
 APP_VERSION = (os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("APP_VERSION") or "dev")[:8]
@@ -598,6 +599,75 @@ async def cmd_beta(message: types.Message):
         )]
     ])
     await message.answer("Homebase — бета нового интерфейса:", reply_markup=kb)
+
+# ─── ВРЕМЕННАЯ ПРОБА, УДАЛИТЬ ПОСЛЕ ОТВЕТА ───
+# Часть сервис-аккаунтов не может создавать файлы на Drive — Google отвечает
+# "Service Accounts do not have storage quota". От этого зависит, сможем ли мы
+# заводить таблицу новому юзеру автоматически или придётся вести его через
+# мастер с копированием шаблона. Проверяем до того, как строить сверху.
+@dp.message(Command("selftest"))
+async def cmd_selftest(message: types.Message):
+    if str(message.from_user.id) != OWNER_TG_ID:
+        return
+    parts = (message.text or "").split()
+    if len(parts) < 2 or "@" not in parts[1]:
+        await message.answer("Использование: /selftest твоя@почта.com")
+        return
+    email = parts[1]
+    await message.answer("⏳ Пробую создать таблицу от имени сервис-аккаунта…")
+
+    creds_dict = _get_creds_dict()
+    sa_email = creds_dict.get("client_email", "?")
+    sh = None
+    try:
+        if _gc is None:
+            _init_sheets()
+        sh = _gc.create("Homebase selftest — можно удалить")
+    except Exception as e:
+        await message.answer(
+            f"❌ Создать таблицу НЕ вышло.\n\n{type(e).__name__}: {e}\n\n"
+            f"Сервис-аккаунт: {sa_email}"
+        )
+        return
+
+    steps = [f"✅ Таблица создана: {sh.id}"]
+    try:
+        ws = sh.sheet1
+        ws.update_title("RAW")
+        ws.update("A1:J1", [RAW_HEADER], value_input_option="RAW")
+        steps.append("✅ Шапка проставлена")
+    except Exception as e:
+        steps.append(f"❌ Шапка: {type(e).__name__}: {e}")
+    try:
+        sh.share(email, perm_type="user", role="writer", notify=False)
+        steps.append(f"✅ Доступ редактора выдан на {email}")
+    except Exception as e:
+        steps.append(f"❌ Доступ на {email}: {type(e).__name__}: {e}")
+
+    await message.answer(
+        "\n".join(steps)
+        + f"\n\nhttps://docs.google.com/spreadsheets/d/{sh.id}"
+        + f"\n\nСервис-аккаунт: {sa_email}"
+        + "\n\nЗайди на Гугл-диск и проверь, видно ли её. Потом /selftestclean — уберу."
+    )
+
+
+@dp.message(Command("selftestclean"))
+async def cmd_selftest_clean(message: types.Message):
+    if str(message.from_user.id) != OWNER_TG_ID:
+        return
+    parts = (message.text or "").split()
+    if len(parts) < 2:
+        await message.answer("Использование: /selftestclean <id таблицы>")
+        return
+    try:
+        if _gc is None:
+            _init_sheets()
+        _gc.del_spreadsheet(parts[1])
+        await message.answer("✅ Удалил")
+    except Exception as e:
+        await message.answer(f"❌ {type(e).__name__}: {e}")
+
 
 @dp.message(Command("stats"))
 async def cmd_stats(message: types.Message):
